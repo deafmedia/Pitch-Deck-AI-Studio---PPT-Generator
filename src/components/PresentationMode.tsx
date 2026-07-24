@@ -1,8 +1,9 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, X, Clock, MessageSquare, Sparkles, Radio } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Clock, MessageSquare, Sparkles, Radio, Pencil } from 'lucide-react';
 import { PitchDeck, ThemePreset } from '../types';
 import { THEME_PRESETS } from '../data/templates';
+import { AnnotationCanvas } from './AnnotationCanvas';
 
 interface PresentationModeProps {
   deck: PitchDeck;
@@ -23,6 +24,7 @@ export const PresentationMode: React.FC<PresentationModeProps> = ({
   const [direction, setDirection] = React.useState<number>(0);
   const [transitionStyle, setTransitionStyle] = React.useState<TransitionType>('slide');
   const [showNotes, setShowNotes] = React.useState(false);
+  const [isAnnotating, setIsAnnotating] = React.useState(false);
   const [secondsElapsed, setSecondsElapsed] = React.useState(0);
 
   const theme: ThemePreset = THEME_PRESETS[deck.theme] || THEME_PRESETS.corporate_blue;
@@ -151,6 +153,20 @@ export const PresentationMode: React.FC<PresentationModeProps> = ({
               <span>Live + Interpreter Studio</span>
             </button>
           )}
+
+          {/* Annotate Toggle */}
+          <button
+            onClick={() => setIsAnnotating(!isAnnotating)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              isAnnotating
+                ? 'bg-amber-400 text-slate-950 font-extrabold ring-2 ring-amber-300'
+                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            }`}
+            title="Toggle Overlay Drawing & Annotation Tool"
+          >
+            <Pencil className="w-3.5 h-3.5 text-amber-400" />
+            <span>Annotate</span>
+          </button>
 
           {/* Notes Toggle */}
           <button
@@ -308,6 +324,13 @@ export const PresentationMode: React.FC<PresentationModeProps> = ({
               <span>{deck.title}</span>
               <span>{currentIndex + 1} / {deck.slides.length}</span>
             </div>
+
+            {/* Slide Drawing Annotation Overlay */}
+            <AnnotationCanvas
+              slideId={currentSlide.id}
+              isActive={isAnnotating}
+              onToggleActive={setIsAnnotating}
+            />
           </motion.div>
         </AnimatePresence>
       </div>

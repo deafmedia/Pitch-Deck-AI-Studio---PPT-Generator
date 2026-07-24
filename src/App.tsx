@@ -9,6 +9,7 @@ import { AiGeneratorModal } from './components/AiGeneratorModal';
 import { PresentationMode } from './components/PresentationMode';
 import { LiveStreamStudio } from './components/LiveStreamStudio';
 import { ExportModal } from './components/ExportModal';
+import { FileExplorerModal } from './components/FileExplorerModal';
 
 export default function App() {
   // Default to the DEF Demo UX Pitch Deck (which matches the attached prompt brief)
@@ -18,6 +19,73 @@ export default function App() {
   const [isPresenting, setIsPresenting] = React.useState<boolean>(false);
   const [isLiveStreamOpen, setIsLiveStreamOpen] = React.useState<boolean>(false);
   const [isExportModalOpen, setIsExportModalOpen] = React.useState<boolean>(false);
+  const [isFileExplorerOpen, setIsFileExplorerOpen] = React.useState<boolean>(false);
+
+  // Deck Undo / Redo History Stack
+  const [history, setHistory] = React.useState<PitchDeck[]>([SAMPLE_DECKS[0]]);
+  const [historyIndex, setHistoryIndex] = React.useState<number>(0);
+
+  // Update current deck and push new state to history
+  const updateDeckWithHistory = (newDeck: PitchDeck) => {
+    setCurrentDeck(newDeck);
+    const newHistory = history.slice(0, historyIndex + 1);
+    // Limit history stack size to 30 snapshots
+    if (newHistory.length >= 30) newHistory.shift();
+    newHistory.push(newDeck);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  };
+
+  // Undo Deck Change
+  const handleUndoDeck = React.useCallback(() => {
+    if (historyIndex > 0) {
+      const prevIndex = historyIndex - 1;
+      const prevDeck = history[prevIndex];
+      setCurrentDeck(prevDeck);
+      setHistoryIndex(prevIndex);
+      if (activeSlideIndex >= prevDeck.slides.length) {
+        setActiveSlideIndex(Math.max(0, prevDeck.slides.length - 1));
+      }
+    }
+  }, [historyIndex, history, activeSlideIndex]);
+
+  // Redo Deck Change
+  const handleRedoDeck = React.useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const nextIndex = historyIndex + 1;
+      const nextDeck = history[nextIndex];
+      setCurrentDeck(nextDeck);
+      setHistoryIndex(nextIndex);
+      if (activeSlideIndex >= nextDeck.slides.length) {
+        setActiveSlideIndex(Math.max(0, nextDeck.slides.length - 1));
+      }
+    }
+  }, [historyIndex, history, activeSlideIndex]);
+
+  // Global Keyboard Shortcuts for Deck Undo/Redo (when not typing in active input)
+  React.useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const targetTag = (e.target as HTMLElement)?.tagName;
+      const isInput = targetTag === 'INPUT' || targetTag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable;
+      if (isInput || isPresenting) return;
+
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+        if (e.shiftKey) {
+          e.preventDefault();
+          handleRedoDeck();
+        } else {
+          e.preventDefault();
+          handleUndoDeck();
+        }
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'y') {
+        e.preventDefault();
+        handleRedoDeck();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [handleUndoDeck, handleRedoDeck, isPresenting]);
 
   // Active theme
   const activeTheme = THEME_PRESETS[currentDeck.theme] || THEME_PRESETS.corporate_blue;
@@ -25,13 +93,13 @@ export default function App() {
 
   // Select a preset deck
   const handleSelectDeck = (deck: PitchDeck) => {
-    setCurrentDeck(deck);
+    updateDeckWithHistory(deck);
     setActiveSlideIndex(0);
   };
 
   // Change theme
   const handleThemeChange = (themeId: ThemePresetId) => {
-    setCurrentDeck({
+    updateDeckWithHistory({
       ...currentDeck,
       theme: themeId,
     });
@@ -41,7 +109,7 @@ export default function App() {
   const handleUpdateActiveSlide = (updatedSlide: SlideData) => {
     const updatedSlides = [...currentDeck.slides];
     updatedSlides[activeSlideIndex] = updatedSlide;
-    setCurrentDeck({
+    updateDeckWithHistory({
       ...currentDeck,
       slides: updatedSlides,
     });
@@ -60,7 +128,7 @@ export default function App() {
     };
 
     const newSlides = [...currentDeck.slides, newSlide];
-    setCurrentDeck({
+    updateDeckWithHistory({
       ...currentDeck,
       slides: newSlides,
     });
@@ -79,7 +147,7 @@ export default function App() {
     const updatedSlides = [...currentDeck.slides];
     updatedSlides.splice(index + 1, 0, duplicated);
 
-    setCurrentDeck({
+    updateDeckWithHistory({
       ...currentDeck,
       slides: updatedSlides,
     });
@@ -90,7 +158,7 @@ export default function App() {
   const handleDeleteSlide = (index: number) => {
     if (currentDeck.slides.length <= 1) return;
     const updatedSlides = currentDeck.slides.filter((_, i) => i !== index);
-    setCurrentDeck({
+    updateDeckWithHistory({
       ...currentDeck,
       slides: updatedSlides,
     });
@@ -106,7 +174,7 @@ export default function App() {
     const [moved] = updatedSlides.splice(index, 1);
     updatedSlides.splice(targetIndex, 0, moved);
 
-    setCurrentDeck({
+    updateDeckWithHistory({
       ...currentDeck,
       slides: updatedSlides,
     });
@@ -115,7 +183,7 @@ export default function App() {
 
   // When AI generates a new deck
   const handleDeckGenerated = (newDeck: PitchDeck) => {
-    setCurrentDeck(newDeck);
+    updateDeckWithHistory(newDeck);
     setActiveSlideIndex(0);
   };
 
@@ -131,6 +199,11 @@ export default function App() {
         onStartPresenting={() => setIsPresenting(true)}
         onStartLiveStream={() => setIsLiveStreamOpen(true)}
         onOpenExportModal={() => setIsExportModalOpen(true)}
+        canUndo={historyIndex > 0}
+        canRedo={historyIndex < history.length - 1}
+        onUndo={handleUndoDeck}
+        onRedo={handleRedoDeck}
+        onOpenFileExplorer={() => setIsFileExplorerOpen(true)}
       />
 
       {/* Main Studio Viewport */}
@@ -196,6 +269,14 @@ export default function App() {
         isOpen={isExportModalOpen}
         deck={currentDeck}
         onClose={() => setIsExportModalOpen(false)}
+      />
+
+      {/* File Explorer Modal */}
+      <FileExplorerModal
+        isOpen={isFileExplorerOpen}
+        onClose={() => setIsFileExplorerOpen(false)}
+        currentDeck={currentDeck}
+        onSelectDeck={handleSelectDeck}
       />
     </div>
   );

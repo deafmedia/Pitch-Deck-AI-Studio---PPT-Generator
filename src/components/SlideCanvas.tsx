@@ -1,6 +1,7 @@
 import React from 'react';
 import { SlideData, ThemePreset } from '../types';
-import { Plus, Trash2, Edit2, CheckCircle2, TrendingUp, Layers, Table, Clock } from 'lucide-react';
+import { Plus, Trash2, Edit2, CheckCircle2, TrendingUp, Layers, Table, Clock, Pencil } from 'lucide-react';
+import { AnnotationCanvas } from './AnnotationCanvas';
 
 interface SlideCanvasProps {
   slide: SlideData;
@@ -14,6 +15,7 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
   onUpdateSlide,
 }) => {
   const [editingField, setEditingField] = React.useState<string | null>(null);
+  const [isAnnotating, setIsAnnotating] = React.useState<boolean>(false);
 
   // Field change helper
   const updateField = (key: keyof SlideData, value: any) => {
@@ -68,19 +70,34 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
             style={{ color: theme.accentColor }}
           />
 
-          {/* Accent Badge */}
-          {slide.accentBadge && (
-            <span
-              className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border"
-              style={{
-                borderColor: theme.accentColor,
-                color: theme.accentColor,
-                backgroundColor: `${theme.accentColor}15`,
-              }}
+          {/* Right Header Actions (Accent Badge & Annotate Toggle) */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsAnnotating(!isAnnotating)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                isAnnotating
+                  ? 'bg-amber-400 text-slate-950 font-extrabold ring-2 ring-amber-300'
+                  : 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-600'
+              }`}
+              title="Toggle Slide Overlay Drawing & Annotation Tool"
             >
-              {slide.accentBadge}
-            </span>
-          )}
+              <Pencil className="w-3.5 h-3.5 text-amber-400" />
+              <span>{isAnnotating ? 'Drawing Mode' : 'Annotate Slide'}</span>
+            </button>
+
+            {slide.accentBadge && (
+              <span
+                className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border"
+                style={{
+                  borderColor: theme.accentColor,
+                  color: theme.accentColor,
+                  backgroundColor: `${theme.accentColor}15`,
+                }}
+              >
+                {slide.accentBadge}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Main Content Area by Layout */}
@@ -390,6 +407,13 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
           <span>Pitch Deck Studio • PowerPoint (.pptx) Ready</span>
           <span className="font-mono">16 : 9 Widescreen</span>
         </div>
+
+        {/* Live Overlay Annotation Canvas */}
+        <AnnotationCanvas
+          slideId={slide.id}
+          isActive={isAnnotating}
+          onToggleActive={setIsAnnotating}
+        />
       </div>
     </main>
   );

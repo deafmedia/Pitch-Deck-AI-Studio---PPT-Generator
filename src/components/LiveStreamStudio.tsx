@@ -25,10 +25,12 @@ import {
   ThumbsUp,
   Send,
   CheckCircle2,
-  Sparkle
+  Sparkle,
+  Pencil
 } from 'lucide-react';
 import { PitchDeck, ThemePreset } from '../types';
 import { THEME_PRESETS } from '../data/templates';
+import { AnnotationCanvas } from './AnnotationCanvas';
 
 interface LiveStreamStudioProps {
   deck: PitchDeck;
@@ -115,6 +117,7 @@ export const LiveStreamStudio: React.FC<LiveStreamStudioProps> = ({
 
   const [activeSpotlightCamId, setActiveSpotlightCamId] = React.useState<string>('cam1');
   const [isInterpreterActive, setIsInterpreterActive] = React.useState(true);
+  const [isAnnotating, setIsAnnotating] = React.useState(false);
   const [showCaptions, setShowCaptions] = React.useState(true);
   const [showNotes, setShowNotes] = React.useState(false);
   const [showQna, setShowQna] = React.useState(false);
@@ -364,6 +367,23 @@ export const LiveStreamStudio: React.FC<LiveStreamStudioProps> = ({
             </button>
           </div>
 
+          {/* Toggle Slide Annotation Overlay Tool */}
+          <button
+            onClick={() => setIsAnnotating(!isAnnotating)}
+            className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer relative ${
+              isAnnotating
+                ? 'bg-amber-400 border-amber-300 text-slate-950 font-extrabold shadow-lg ring-2 ring-amber-300'
+                : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
+            }`}
+            title="Toggle Live Stream Slide Annotation & Drawing Overlay"
+          >
+            <Pencil className="w-4 h-4 text-amber-400" />
+            <span className="hidden md:inline">{isAnnotating ? 'Drawing Active' : 'Annotate Slide'}</span>
+            {isAnnotating && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+            )}
+          </button>
+
           {/* Toggle Personnel Q&A Drawer */}
           <button
             onClick={() => {
@@ -571,6 +591,13 @@ export const LiveStreamStudio: React.FC<LiveStreamStudioProps> = ({
               <span>{deck.title}</span>
               <span>Slide {currentIndex + 1} of {deck.slides.length}</span>
             </div>
+
+            {/* Slide Drawing Annotation Overlay Canvas */}
+            <AnnotationCanvas
+              slideId={currentSlide.id}
+              isActive={isAnnotating}
+              onToggleActive={setIsAnnotating}
+            />
           </div>
 
           {/* Navigation Overlay Controls */}

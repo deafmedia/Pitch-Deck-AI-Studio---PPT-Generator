@@ -1,5 +1,5 @@
 import React from 'react';
-import { Presentation, Download, Sparkles, Play, Palette, FileSpreadsheet, Share2, Radio, Search, X, Layout, CornerDownLeft } from 'lucide-react';
+import { Presentation, Download, Sparkles, Play, Palette, FileSpreadsheet, Share2, Radio, Search, X, Layout, CornerDownLeft, Undo2, Redo2, FolderTree } from 'lucide-react';
 import { PitchDeck, ThemePresetId, SlideData } from '../types';
 import { THEME_PRESETS, SAMPLE_DECKS } from '../data/templates';
 import { exportDeckToPptx } from '../lib/pptxExport';
@@ -13,6 +13,11 @@ interface NavbarProps {
   onStartPresenting: () => void;
   onStartLiveStream: () => void;
   onOpenExportModal: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  onOpenFileExplorer?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -24,6 +29,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   onStartPresenting,
   onStartLiveStream,
   onOpenExportModal,
+  canUndo = false,
+  canRedo = false,
+  onUndo,
+  onRedo,
+  onOpenFileExplorer,
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
@@ -138,34 +148,34 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between text-slate-800 shrink-0 shadow-xs z-20">
+    <header className="h-16 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between text-slate-800 shrink-0 shadow-xs z-30 sticky top-0 transition-all duration-200">
       {/* Brand & Deck Title */}
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center shadow-xs shadow-blue-200">
-          <span className="text-white font-black text-xs italic tracking-tighter">AC</span>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-9 h-9 bg-linear-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-md shadow-blue-500/20 ring-1 ring-blue-500/20 shrink-0">
+          <span className="text-white font-black text-xs italic tracking-tight">AC</span>
         </div>
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="font-extrabold text-base tracking-tight text-slate-900 flex items-center gap-1.5">
-              ALL CREATE <span className="text-blue-600 font-bold">STUDIO</span>
+            <h1 className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 flex items-center gap-1.5 whitespace-nowrap">
+              ALL CREATE <span className="bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent font-black">STUDIO</span>
             </h1>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[10px] font-extrabold tracking-wider uppercase">
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 bg-blue-50/90 text-blue-700 border border-blue-200/80 rounded-full text-[10px] font-extrabold tracking-wider uppercase">
               <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse" />
               PPTX V4.2
             </span>
           </div>
-          <p className="text-xs text-slate-500 font-medium truncate max-w-xs sm:max-w-xs">
+          <p className="text-xs text-slate-500 font-medium truncate max-w-[140px] sm:max-w-xs" title={currentDeck.title}>
             {currentDeck.title}
           </p>
         </div>
       </div>
 
       {/* Center Search Input & Preset/Theme Controls */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
         {/* Global Slide Search Input */}
-        <div ref={searchContainerRef} className="relative w-48 sm:w-64 md:w-80">
+        <div ref={searchContainerRef} className="relative w-40 sm:w-56 md:w-72 lg:w-80">
           <div className="relative flex items-center">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 pointer-events-none" />
             <input
               ref={searchInputRef}
               type="text"
@@ -177,8 +187,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               onFocus={() => setIsSearchOpen(true)}
               onKeyDown={handleInputKeyDown}
-              placeholder="Search slides (title, content...)"
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-8 py-1.5 text-xs text-slate-800 font-medium placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white focus:ring-1 focus:ring-blue-600 transition"
+              placeholder="Search slides (⌘K or /)..."
+              className="w-full bg-slate-100/70 border border-slate-200/80 rounded-xl pl-8.5 pr-8 py-1.5 text-xs text-slate-800 font-medium placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all duration-150 shadow-inner/5"
             />
             {searchQuery ? (
               <button
@@ -186,25 +196,25 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setSearchQuery('');
                   setIsSearchOpen(false);
                 }}
-                className="absolute right-2.5 p-0.5 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700 transition"
+                className="absolute right-2.5 p-0.5 hover:bg-slate-200 rounded-md text-slate-400 hover:text-slate-700 transition cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             ) : (
-              <span className="absolute right-2.5 text-[10px] font-mono text-slate-400 pointer-events-none hidden sm:inline">
+              <kbd className="absolute right-2.5 text-[10px] font-mono font-extrabold text-slate-400 bg-slate-200/60 px-1.5 py-0.5 rounded border border-slate-300/50 pointer-events-none hidden sm:inline-block">
                 ⌘K
-              </span>
+              </kbd>
             )}
           </div>
 
           {/* Search Dropdown Results */}
           {isSearchOpen && searchQuery.trim().length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden z-50 max-h-80 overflow-y-auto divide-y divide-slate-100">
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl shadow-2xl overflow-hidden z-50 max-h-80 overflow-y-auto divide-y divide-slate-100 animate-in fade-in slide-in-from-top-2 duration-150">
               {searchResults.length > 0 ? (
                 <div>
-                  <div className="p-2 bg-slate-50 border-b border-slate-100 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 flex justify-between items-center">
+                  <div className="px-3 py-2 bg-slate-50/90 border-b border-slate-100 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 flex justify-between items-center">
                     <span>{searchResults.length} {searchResults.length === 1 ? 'Slide Match' : 'Slide Matches'}</span>
-                    <span className="font-normal text-slate-400">Press ↵ to jump</span>
+                    <span className="font-medium text-slate-400">Press ↵ to jump</span>
                   </div>
                   {searchResults.map((res, idx) => (
                     <button
@@ -212,10 +222,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                       onClick={() => handleSelectResult(res.index)}
                       onMouseEnter={() => setSelectedIndex(idx)}
                       className={`w-full text-left p-3 transition flex items-start gap-3 cursor-pointer ${
-                        idx === selectedIndex ? 'bg-blue-50/80 border-l-4 border-blue-600' : 'hover:bg-slate-50'
+                        idx === selectedIndex ? 'bg-blue-50/90 border-l-4 border-blue-600' : 'hover:bg-slate-50/80'
                       }`}
                     >
-                      <span className="px-2 py-1 bg-slate-100 border border-slate-200 rounded text-[10px] font-mono font-bold text-slate-700 shrink-0">
+                      <span className="px-2 py-1 bg-slate-100 border border-slate-200/80 rounded-md text-[10px] font-mono font-bold text-slate-700 shrink-0 shadow-2xs">
                         #{res.index + 1}
                       </span>
                       <div className="flex-1 min-w-0">
@@ -223,7 +233,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           <h4 className="text-xs font-bold text-slate-900 truncate">
                             {res.slide.title}
                           </h4>
-                          <span className="text-[10px] font-semibold uppercase text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded shrink-0">
+                          <span className="text-[9px] font-extrabold uppercase tracking-wider text-blue-700 bg-blue-100/70 border border-blue-200/80 px-1.5 py-0.5 rounded-full shrink-0">
                             {res.slide.layout}
                           </span>
                         </div>
@@ -246,17 +256,29 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
 
-        {/* Preset Templates */}
-        <div className="hidden xl:flex items-center gap-2 bg-slate-100/80 border border-slate-200 rounded-lg px-3 py-1.5 text-xs">
+        {/* Presentation File Explorer Button */}
+        {onOpenFileExplorer && (
+          <button
+            onClick={onOpenFileExplorer}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-slate-100 hover:bg-slate-200/80 text-slate-800 border border-slate-200/80 transition cursor-pointer active:scale-95 shadow-2xs"
+            title="Open Presentation File Explorer (Manage & Import Decks)"
+          >
+            <FolderTree className="w-3.5 h-3.5 text-blue-600" />
+            <span className="hidden md:inline">Explorer File</span>
+          </button>
+        )}
+
+        {/* Preset Templates Dropdown */}
+        <div className="hidden xl:flex items-center gap-1.5 bg-slate-100/70 border border-slate-200/80 rounded-xl px-2.5 py-1.5 text-xs transition hover:bg-slate-100">
           <FileSpreadsheet className="w-3.5 h-3.5 text-slate-500" />
-          <span className="text-slate-500 font-semibold">Preset:</span>
+          <span className="text-slate-400 font-semibold text-[11px]">Preset:</span>
           <select
             value={currentDeck.id}
             onChange={(e) => {
               const selected = SAMPLE_DECKS.find((d) => d.id === e.target.value);
               if (selected) onSelectDeck(selected);
             }}
-            className="bg-transparent text-slate-800 font-bold focus:outline-none cursor-pointer"
+            className="bg-transparent text-slate-800 font-bold text-xs focus:outline-none cursor-pointer pr-1"
           >
             {SAMPLE_DECKS.map((d) => (
               <option key={d.id} value={d.id} className="bg-white text-slate-800">
@@ -266,14 +288,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           </select>
         </div>
 
-        {/* Theme Picker */}
-        <div className="hidden xl:flex items-center gap-2 bg-slate-100/80 border border-slate-200 rounded-lg px-3 py-1.5 text-xs">
+        {/* Theme Picker Dropdown */}
+        <div className="hidden xl:flex items-center gap-1.5 bg-slate-100/70 border border-slate-200/80 rounded-xl px-2.5 py-1.5 text-xs transition hover:bg-slate-100">
           <Palette className="w-3.5 h-3.5 text-slate-500" />
-          <span className="text-slate-500 font-semibold">Theme:</span>
+          <span className="text-slate-400 font-semibold text-[11px]">Theme:</span>
           <select
             value={currentDeck.theme}
             onChange={(e) => onThemeChange(e.target.value as ThemePresetId)}
-            className="bg-transparent text-slate-800 font-bold focus:outline-none cursor-pointer"
+            className="bg-transparent text-slate-800 font-bold text-xs focus:outline-none cursor-pointer pr-1"
           >
             {Object.values(THEME_PRESETS).map((t) => (
               <option key={t.id} value={t.id} className="bg-white text-slate-800">
@@ -282,23 +304,43 @@ export const Navbar: React.FC<NavbarProps> = ({
             ))}
           </select>
         </div>
+
+        {/* Global Undo & Redo History Controls */}
+        <div className="flex items-center gap-0.5 bg-slate-100/70 border border-slate-200/80 rounded-xl p-1 text-xs">
+          <button
+            onClick={onUndo}
+            disabled={!canUndo}
+            className="p-1.5 rounded-lg hover:bg-slate-200/80 text-slate-700 disabled:opacity-30 transition cursor-pointer disabled:cursor-not-allowed"
+            title="Undo Deck Modification (Ctrl+Z)"
+          >
+            <Undo2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={onRedo}
+            disabled={!canRedo}
+            className="p-1.5 rounded-lg hover:bg-slate-200/80 text-slate-700 disabled:opacity-30 transition cursor-pointer disabled:cursor-not-allowed"
+            title="Redo Deck Modification (Ctrl+Y)"
+          >
+            <Redo2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Action Buttons */}
       <div className="flex items-center gap-2">
-        {/* AI Generator Trigger */}
+        {/* AI Deck Generator Button */}
         <button
           onClick={onOpenAiModal}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-xl text-xs font-extrabold bg-slate-950 hover:bg-slate-800 text-white shadow-sm transition cursor-pointer active:scale-95 border border-slate-800"
         >
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin-slow" />
           <span className="hidden sm:inline">AI Deck Builder</span>
         </button>
 
-        {/* Live Stream & Interpreter Studio Button */}
+        {/* Live Stream + Sign Language Interpreter Studio */}
         <button
           onClick={onStartLiveStream}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-extrabold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-300 transition cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-xl text-xs font-extrabold bg-purple-50 hover:bg-purple-100/80 text-purple-700 border border-purple-200/90 transition cursor-pointer active:scale-95 shadow-2xs"
           title="Launch Live Stream Studio with Personnel & Sign Language Interpreter"
         >
           <Radio className="w-3.5 h-3.5 text-purple-600 animate-pulse" />
@@ -309,8 +351,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Presenter Mode */}
         <button
           onClick={onStartPresenting}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition cursor-pointer"
-          title="Start Fullscreen Presentation"
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-xl text-xs font-extrabold bg-white hover:bg-slate-100 text-slate-800 border border-slate-200/90 transition cursor-pointer active:scale-95 shadow-2xs"
+          title="Start Fullscreen Interactive Presentation Mode"
         >
           <Play className="w-3.5 h-3.5 text-blue-600 fill-blue-600" />
           <span>Present</span>
@@ -319,7 +361,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Download PPTX Direct */}
         <button
           onClick={() => exportDeckToPptx(currentDeck)}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-200 transition cursor-pointer"
+          className="flex items-center gap-2 px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 transition cursor-pointer active:scale-95"
           title="Download editable PowerPoint (.pptx)"
         >
           <Download className="w-3.5 h-3.5" />
@@ -330,7 +372,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* More Export Options */}
         <button
           onClick={onOpenExportModal}
-          className="p-2 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-300 transition cursor-pointer"
+          className="p-2 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200/90 transition cursor-pointer active:scale-95"
           title="Export Options (PDF, JSON)"
         >
           <Share2 className="w-4 h-4" />

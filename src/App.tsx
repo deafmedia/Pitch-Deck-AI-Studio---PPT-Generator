@@ -10,8 +10,25 @@ import { PresentationMode } from './components/PresentationMode';
 import { LiveStreamStudio } from './components/LiveStreamStudio';
 import { ExportModal } from './components/ExportModal';
 import { FileExplorerModal } from './components/FileExplorerModal';
+import { AuthScreen, UserProfile } from './components/AuthScreen';
 
 export default function App() {
+  // Authentication State
+  const [currentUser, setCurrentUser] = React.useState<UserProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem('ac_presentation_user_v1');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const [hasSkippedAuth, setHasSkippedAuth] = React.useState<boolean>(() => {
+    return localStorage.getItem('ac_presentation_skipped_auth_v1') === 'true';
+  });
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = React.useState<boolean>(false);
+
   // Default to the DEF Demo UX Pitch Deck (which matches the attached prompt brief)
   const [currentDeck, setCurrentDeck] = React.useState<PitchDeck>(SAMPLE_DECKS[0]);
   const [activeSlideIndex, setActiveSlideIndex] = React.useState<number>(0);
@@ -24,6 +41,40 @@ export default function App() {
   // Deck Undo / Redo History Stack
   const [history, setHistory] = React.useState<PitchDeck[]>([SAMPLE_DECKS[0]]);
   const [historyIndex, setHistoryIndex] = React.useState<number>(0);
+
+  // Auth Action Callbacks
+  const handleAuthSuccess = (user: UserProfile) => {
+    setCurrentUser(user);
+    setHasSkippedAuth(true);
+    setIsAuthModalOpen(false);
+    try {
+      localStorage.setItem('ac_presentation_user_v1', JSON.stringify(user));
+      localStorage.setItem('ac_presentation_skipped_auth_v1', 'true');
+    } catch (e) {
+      console.warn('LocalStorage user save failed', e);
+    }
+  };
+
+  const handleContinueAsGuest = () => {
+    setHasSkippedAuth(true);
+    setIsAuthModalOpen(false);
+    try {
+      localStorage.setItem('ac_presentation_skipped_auth_v1', 'true');
+    } catch (e) {
+      console.warn('LocalStorage skip save failed', e);
+    }
+  };
+
+  const handleSignOut = () => {
+    setCurrentUser(null);
+    setHasSkippedAuth(false);
+    try {
+      localStorage.removeItem('ac_presentation_user_v1');
+      localStorage.removeItem('ac_presentation_skipped_auth_v1');
+    } catch (e) {
+      console.warn('LocalStorage user remove failed', e);
+    }
+  };
 
   // Update current deck and push new state to history
   const updateDeckWithHistory = (newDeck: PitchDeck) => {
@@ -187,6 +238,16 @@ export default function App() {
     setActiveSlideIndex(0);
   };
 
+  // First Page Auth Gate: If user is not logged in and has not chosen guest mode
+  if (!currentUser && !hasSkippedAuth) {
+    return (
+      <AuthScreen
+        onAuthSuccess={handleAuthSuccess}
+        onContinueAsGuest={handleContinueAsGuest}
+      />
+    );
+  }
+
   return (
     <div className="h-screen w-screen flex flex-col bg-slate-50 text-slate-900 overflow-hidden font-sans">
       {/* Top Navigation */}
@@ -204,6 +265,9 @@ export default function App() {
         onUndo={handleUndoDeck}
         onRedo={handleRedoDeck}
         onOpenFileExplorer={() => setIsFileExplorerOpen(true)}
+        currentUser={currentUser}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onSignOut={handleSignOut}
       />
 
       {/* Main Studio Viewport */}
@@ -278,6 +342,16 @@ export default function App() {
         currentDeck={currentDeck}
         onSelectDeck={handleSelectDeck}
       />
+
+      {/* Auth Modal overlay when triggered from Navbar */}
+      {isAuthModalOpen && (
+        <AuthScreen
+          isModal
+          onCloseModal={() => setIsAuthModalOpen(false)}
+          onAuthSuccess={handleAuthSuccess}
+          onContinueAsGuest={handleContinueAsGuest}
+        />
+      )}
     </div>
   );
 }

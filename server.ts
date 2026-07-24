@@ -1,0 +1,251 @@
+import express from "express";
+import path from "path";
+import { createServer as createViteServer } from "vite";
+import { GoogleGenAI, Type } from "@google/genai";
+
+const app = express();
+const PORT = 3000;
+
+app.use(express.json({ limit: "10mb" }));
+
+// Server-side Gemini AI Client
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY || "DUMMY_KEY",
+  httpOptions: {
+    headers: {
+      'User-Agent': 'aistudio-build',
+    }
+  }
+});
+
+// Healthcheck
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", time: new Date().toISOString() });
+});
+
+// AI Pitch Deck Generation Route
+app.post("/api/generate-deck", async (req, res) => {
+  try {
+    const { prompt, theme = "corporate_blue", category = "General Pitch" } = req.body;
+
+    if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
+      return res.status(400).json({ error: "Prompt is required" });
+    }
+
+    // Check if Gemini API key exists
+    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === "DUMMY_KEY") {
+      // Fallback rule-based deck generation when key is absent
+      console.log("No GEMINI_API_KEY found, using rule-based generator fallback");
+      const generatedDeck = createFallbackDeck(prompt, theme, category);
+      return res.json({ deck: generatedDeck });
+    }
+
+    const systemInstruction = `
+You are an elite Silicon Valley pitch deck consultant and startup advisor.
+Your job is to transform a business prompt, startup idea, design brief, or raw notes into a high-converting, professional presentation pitch deck (8-12 slides).
+
+Each slide MUST have a clear layout type: 'title', 'stats', 'pillars', 'cards', 'problem_solution', 'table', 'timeline', or 'cta'.
+
+Return clean JSON matching the requested schema with title, subtitle, category, theme, and slides array.
+    `;
+
+    const userPrompt = `
+Generate a complete, highly structured pitch deck for the following topic/brief:
+"${prompt}"
+
+Deck Category: "${category}"
+Desired Theme: "${theme}"
+
+Ensure slide layouts are varied (include title slide, stats slide, problem & solution, feature cards, competitive table or roadmap timeline, and CTA).
+Include realistic data metrics, punchy bullet points, and speaker notes for each slide.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.6-flash",
+      contents: userPrompt,
+      config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            subtitle: { type: Type.STRING },
+            author: { type: Type.STRING },
+            category: { type: Type.STRING },
+            theme: { type: Type.STRING },
+            slides: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  id: { type: Type.STRING },
+                  layout: { type: Type.STRING },
+                  eyebrow: { type: Type.STRING },
+                  title: { type: Type.STRING },
+                  subtitle: { type: Type.STRING },
+                  accentBadge: { type: Type.STRING },
+                  speakerNotes: { type: Type.STRING },
+                  bullets: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                  },
+                  stats: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        value: { type: Type.STRING },
+                        label: { type: Type.STRING },
+                        sublabel: { type: Type.STRING },
+                      },
+                      required: ["value", "label"],
+                    },
+                  },
+                  cards: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        tag: { type: Type.STRING },
+                        title: { type: Type.STRING },
+                        description: { type: Type.STRING },
+                        highlight: { type: Type.BOOLEAN },
+                      },
+                      required: ["title", "description"],
+                    },
+                  },
+                },
+                required: ["id", "layout", "title"],
+              },
+            },
+          },
+          required: ["title", "subtitle", "slides"],
+        },
+      },
+    });
+
+    const jsonText = response.text || "{}";
+    const deckData = JSON.parse(jsonText);
+
+    // Format IDs if missing
+    if (deckData.slides && Array.isArray(deckData.slides)) {
+      deckData.slides = deckData.slides.map((s: any, idx: number) => ({
+        ...s,
+        id: s.id || `ai-slide-${idx + 1}`,
+        layout: s.layout || 'cards',
+      }));
+    }
+
+    deckData.id = `deck-${Date.now()}`;
+    deckData.theme = theme;
+
+    return res.json({ deck: deckData });
+  } catch (error: any) {
+    console.error("Gemini Deck Generation Error:", error);
+    // Fallback on error
+    const fallback = createFallbackDeck(req.body.prompt || "Generated Pitch", req.body.theme || "corporate_blue", req.body.category || "Startup");
+    return res.json({ deck: fallback, warning: "Used offline generator due to API response." });
+  }
+});
+
+// Fallback Rule-based Pitch Deck Builder
+function createFallbackDeck(promptText: string, theme: string, category: string) {
+  const title = promptText.length > 50 ? promptText.substring(0, 48) + "..." : promptText;
+  return {
+    id: `deck-${Date.now()}`,
+    title: title || "Custom Generated Pitch Deck",
+    subtitle: "AI-Powered Executive Pitch Deck & Strategic Overview",
+    author: "Pitch Deck Studio",
+    category: category || "Business Presentation",
+    theme: theme || "corporate_blue",
+    slides: [
+      {
+        id: "gen-1",
+        layout: "title",
+        eyebrow: "STRATEGIC OVERVIEW",
+        title: title,
+        subtitle: "A modern, high-impact business strategy designed for growth and market leadership.",
+        bullets: [
+          "Delivering disruptive value to enterprise & consumer markets",
+          "Accelerating adoption with resilient technology architecture",
+          "Scalable business model with high unit economics margin",
+          "Targeting market leadership with rapid release cadence"
+        ],
+        speakerNotes: "Introduce the core proposal and state why now is the right time for this product.",
+        accentBadge: "COVER"
+      },
+      {
+        id: "gen-2",
+        layout: "stats",
+        eyebrow: "MARKET METRICS",
+        title: "Key Performance & Market Traction",
+        subtitle: "Quantifiable indicators driving momentum across target verticals.",
+        stats: [
+          { value: "$42M", label: "Target Market Opportunity", sublabel: "Addressable market size" },
+          { value: "3.4x", label: "YoY Growth Rate", sublabel: "Sustained revenue expansion" },
+          { value: "88%", label: "Customer Retention", sublabel: "High product stickiness" },
+          { value: "< 30 Days", label: "Time to Value", sublabel: "Rapid onboarding experience" }
+        ],
+        bullets: [
+          "Strong demand signals across pilot customer cohorts",
+          "Defensible product features with low customer acquisition cost"
+        ],
+        speakerNotes: "Focus on the strong numbers and retention metrics.",
+        accentBadge: "TRACTION"
+      },
+      {
+        id: "gen-3",
+        layout: "pillars",
+        eyebrow: "CORE PILLARS",
+        title: "Value Proposition & Strategic Pillars",
+        subtitle: "Four fundamental advantages underpinning our technology and brand.",
+        cards: [
+          { tag: "PILLAR 1", title: "Automated Intelligence", description: "Streamlining complex workflows with smart context recognition.", highlight: true },
+          { tag: "PILLAR 2", title: "Enterprise Security", description: "Bank-grade encryption, role-based access, and complete audit trails.", highlight: false },
+          { tag: "PILLAR 3", title: "Seamless Integration", description: "Plug-and-play connectors with minimal developer friction.", highlight: true },
+          { tag: "PILLAR 4", title: "Predictive Analytics", description: "Real-time decision dashboards with actionable data insights.", highlight: false }
+        ],
+        speakerNotes: "Highlight Pillar 1 and Pillar 3 as primary customer magnets.",
+        accentBadge: "VALUE PILLARS"
+      },
+      {
+        id: "gen-4",
+        layout: "cta",
+        eyebrow: "NEXT STEPS",
+        title: "Growth Execution & Next Steps",
+        subtitle: "Ready for deployment, investor discussions, and immediate execution.",
+        bullets: [
+          "Download complete native PowerPoint presentation (.pptx)",
+          "Share deck URL or export print-ready PDF documentation",
+          "Schedule strategic alignment session with founding team"
+        ],
+        speakerNotes: "Conclude presentation with action items and contact details.",
+        accentBadge: "THE ASK"
+      }
+    ]
+  };
+}
+
+// Start Server & Integrate Vite Middleware
+async function startServer() {
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
+  });
+}
+
+startServer();

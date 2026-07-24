@@ -1,0 +1,6 @@
+{
+  "name": "Pitch Deck AI Studio - PPT Generator",
+  "description": "Create, customize, and export professional pitch decks to native PowerPoint (.pptx) presentation files.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

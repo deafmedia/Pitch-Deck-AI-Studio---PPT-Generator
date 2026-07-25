@@ -59,6 +59,8 @@ export interface TimelineStep {
   description: string;
 }
 
+export type SlideTransitionType = 'fade' | 'slide' | 'zoom' | 'flip' | 'scale_up' | 'fade_up';
+
 export interface SlideData {
   id: string;
   layout: SlideLayoutType;
@@ -77,8 +79,9 @@ export interface SlideData {
   accentBadge?: string;
   titleFontSize?: number; // e.g. 20 to 48 px
   subtitleFontSize?: number; // e.g. 12 to 24 px
-  transition?: 'fade' | 'slide' | 'zoom';
+  transition?: SlideTransitionType;
   imageUrl?: string;
+  imageAltText?: string;
   videoUrl?: string;
   iconName?: string;
   mediaCaption?: string;

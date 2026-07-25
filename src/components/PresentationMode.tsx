@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, X, Clock, MessageSquare, Sparkles, Radio, Pencil } from 'lucide-react';
-import { PitchDeck, ThemePreset } from '../types';
+import { PitchDeck, ThemePreset, SlideTransitionType } from '../types';
 import { THEME_PRESETS } from '../data/templates';
 import { AnnotationCanvas } from './AnnotationCanvas';
 
@@ -12,8 +12,6 @@ interface PresentationModeProps {
   onLaunchLiveStream?: () => void;
 }
 
-type TransitionType = 'slide' | 'fade' | 'zoom';
-
 export const PresentationMode: React.FC<PresentationModeProps> = ({
   deck,
   initialSlideIndex = 0,
@@ -22,7 +20,7 @@ export const PresentationMode: React.FC<PresentationModeProps> = ({
 }) => {
   const [currentIndex, setCurrentIndex] = React.useState(initialSlideIndex);
   const [direction, setDirection] = React.useState<number>(0);
-  const [transitionStyle, setTransitionStyle] = React.useState<TransitionType>('slide');
+  const [transitionStyle, setTransitionStyle] = React.useState<SlideTransitionType>('slide');
   const [showNotes, setShowNotes] = React.useState(false);
   const [isAnnotating, setIsAnnotating] = React.useState(false);
   const [secondsElapsed, setSecondsElapsed] = React.useState(0);
@@ -85,9 +83,30 @@ export const PresentationMode: React.FC<PresentationModeProps> = ({
     }
     if (activeTransition === 'zoom') {
       return {
-        enter: (dir: number) => ({ opacity: 0, scale: dir > 0 ? 1.15 : 0.85 }),
+        enter: (dir: number) => ({ opacity: 0, scale: dir > 0 ? 1.18 : 0.82 }),
         center: { opacity: 1, scale: 1 },
-        exit: (dir: number) => ({ opacity: 0, scale: dir > 0 ? 0.85 : 1.15 }),
+        exit: (dir: number) => ({ opacity: 0, scale: dir > 0 ? 0.82 : 1.18 }),
+      };
+    }
+    if (activeTransition === 'flip') {
+      return {
+        enter: (dir: number) => ({ opacity: 0, rotateY: dir > 0 ? 90 : -90, scale: 0.9 }),
+        center: { opacity: 1, rotateY: 0, scale: 1 },
+        exit: (dir: number) => ({ opacity: 0, rotateY: dir > 0 ? -90 : 90, scale: 0.9 }),
+      };
+    }
+    if (activeTransition === 'scale_up') {
+      return {
+        enter: { opacity: 0, scale: 0.8 },
+        center: { opacity: 1, scale: 1 },
+        exit: { opacity: 0, scale: 1.1 },
+      };
+    }
+    if (activeTransition === 'fade_up') {
+      return {
+        enter: (dir: number) => ({ opacity: 0, y: dir > 0 ? 80 : -80 }),
+        center: { opacity: 1, y: 0 },
+        exit: (dir: number) => ({ opacity: 0, y: dir > 0 ? -80 : 80 }),
       };
     }
     // Default: 'slide'
@@ -127,17 +146,20 @@ export const PresentationMode: React.FC<PresentationModeProps> = ({
 
         <div className="flex items-center gap-3">
           {/* Transition Effect Selector */}
-          <div className="flex items-center gap-1.5 bg-slate-800 px-2 py-1 rounded-lg text-xs">
+          <div className="flex items-center gap-1.5 bg-slate-800 px-2.5 py-1 rounded-lg text-xs border border-slate-700">
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             <span className="text-slate-400 text-[11px] font-medium">Transition:</span>
             <select
               value={transitionStyle}
-              onChange={(e) => setTransitionStyle(e.target.value as TransitionType)}
+              onChange={(e) => setTransitionStyle(e.target.value as SlideTransitionType)}
               className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
             >
-              <option value="slide" className="bg-slate-900">Slide</option>
-              <option value="fade" className="bg-slate-900">Fade</option>
-              <option value="zoom" className="bg-slate-900">Zoom</option>
+              <option value="slide" className="bg-slate-900">Slide Left</option>
+              <option value="fade" className="bg-slate-900">Cross Fade</option>
+              <option value="zoom" className="bg-slate-900">Zoom Effect</option>
+              <option value="flip" className="bg-slate-900">3D Flip</option>
+              <option value="scale_up" className="bg-slate-900">Scale Up</option>
+              <option value="fade_up" className="bg-slate-900">Fade Up</option>
             </select>
           </div>
 

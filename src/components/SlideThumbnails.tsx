@@ -102,18 +102,18 @@ export const SlideThumbnails: React.FC<SlideThumbnailsProps> = ({
                   </span>
                 </span>
 
-                {/* Quick Slide Actions on Hover */}
-                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition">
+                {/* Quick Slide Actions on Hover & Touch */}
+                <div className="sm:opacity-0 sm:group-hover:opacity-100 opacity-100 flex items-center gap-1 transition">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onMoveSlide(index, 'up');
                     }}
                     disabled={index === 0}
-                    className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-800 disabled:opacity-30"
+                    className="p-1.5 rounded-md hover:bg-slate-100 active:bg-slate-200 text-slate-500 hover:text-slate-800 disabled:opacity-30 cursor-pointer min-w-[28px] min-h-[28px] flex items-center justify-center"
                     title="Move Up"
                   >
-                    <ChevronUp className="w-3 h-3" />
+                    <ChevronUp className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={(e) => {
@@ -121,20 +121,20 @@ export const SlideThumbnails: React.FC<SlideThumbnailsProps> = ({
                       onMoveSlide(index, 'down');
                     }}
                     disabled={index === slides.length - 1}
-                    className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-800 disabled:opacity-30"
+                    className="p-1.5 rounded-md hover:bg-slate-100 active:bg-slate-200 text-slate-500 hover:text-slate-800 disabled:opacity-30 cursor-pointer min-w-[28px] min-h-[28px] flex items-center justify-center"
                     title="Move Down"
                   >
-                    <ChevronDown className="w-3 h-3" />
+                    <ChevronDown className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onDuplicateSlide(index);
                     }}
-                    className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-800"
+                    className="p-1.5 rounded-md hover:bg-slate-100 active:bg-slate-200 text-slate-500 hover:text-slate-800 cursor-pointer min-w-[28px] min-h-[28px] flex items-center justify-center"
                     title="Duplicate"
                   >
-                    <Copy className="w-3 h-3" />
+                    <Copy className="w-3.5 h-3.5" />
                   </button>
                   {slides.length > 1 && (
                     <button
@@ -142,10 +142,10 @@ export const SlideThumbnails: React.FC<SlideThumbnailsProps> = ({
                         e.stopPropagation();
                         onDeleteSlide(index);
                       }}
-                      className="p-1 rounded hover:bg-red-50 text-red-500 hover:text-red-700"
+                      className="p-1.5 rounded-md hover:bg-red-50 active:bg-red-100 text-red-500 hover:text-red-700 cursor-pointer min-w-[28px] min-h-[28px] flex items-center justify-center"
                       title="Delete Slide"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>

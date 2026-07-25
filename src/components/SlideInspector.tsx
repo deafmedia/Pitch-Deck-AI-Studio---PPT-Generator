@@ -47,14 +47,22 @@ import {
   Laptop,
   Cloud,
   Link as LinkIcon,
-  X
+  X,
+  ShieldCheck,
+  Eye,
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  Wand2
 } from 'lucide-react';
-import { SlideData, SlideLayoutType, ThemePreset } from '../types';
+import { SlideData, SlideLayoutType, ThemePreset, SlideTransitionType } from '../types';
 import { SlideLayoutPickerModal, LAYOUT_OPTIONS } from './SlideLayoutPickerModal';
 import { ImageLibraryModal } from './ImageLibraryModal';
+import { scanSlideAccessibility } from '../lib/accessibility';
 
 interface SlideInspectorProps {
   slide: SlideData;
+  allSlides?: SlideData[];
   theme: ThemePreset;
   onUpdateSlide: (updated: SlideData) => void;
   activeSlideIndex?: number;
@@ -62,6 +70,7 @@ interface SlideInspectorProps {
   onDuplicateSlide?: () => void;
   onDeleteSlide?: () => void;
   onMoveSlide?: (fromIndex: number, toIndex: number) => void;
+  onSelectSlide?: (index: number) => void;
 }
 
 const STOCK_IMAGE_PRESETS = [
@@ -95,6 +104,7 @@ const AVAILABLE_SLIDE_ICONS = [
 
 export const SlideInspector: React.FC<SlideInspectorProps> = ({
   slide,
+  allSlides,
   theme,
   onUpdateSlide,
   activeSlideIndex = 0,
@@ -102,12 +112,46 @@ export const SlideInspector: React.FC<SlideInspectorProps> = ({
   onDuplicateSlide,
   onDeleteSlide,
   onMoveSlide,
+  onSelectSlide,
 }) => {
-  const [activeTab, setActiveTab] = useState<'layout' | 'content' | 'media' | 'presenter' | 'copilot'>('layout');
+  const [activeTab, setActiveTab] = useState<'layout' | 'content' | 'media' | 'presenter' | 'copilot' | 'a11y'>('layout');
   const [isGalleryOpen, setIsGalleryOpen] = useState<boolean>(false);
   const [isImageLibraryOpen, setIsImageLibraryOpen] = useState<boolean>(false);
   const [copiedNotes, setCopiedNotes] = useState<boolean>(false);
   const [newCheckitemText, setNewCheckitemText] = useState<string>('');
+
+  // Scan current slide for accessibility issues
+  const accessibilityIssues = scanSlideAccessibility(slide, theme);
+  const criticalCount = accessibilityIssues.filter((i) => i.severity === 'critical').length;
+  const warningCount = accessibilityIssues.filter((i) => i.severity === 'warning').length;
+
+  // Deck-Wide Global Accessibility Scan
+  const deckSlidesList = allSlides && allSlides.length > 0 ? allSlides : [slide];
+  const deckA11yScans = deckSlidesList.map((s, idx) => ({
+    slide: s,
+    index: idx,
+    issues: scanSlideAccessibility(s, theme),
+    critical: scanSlideAccessibility(s, theme).filter((i) => i.severity === 'critical').length,
+    warning: scanSlideAccessibility(s, theme).filter((i) => i.severity === 'warning').length,
+  }));
+
+  const deckTotalCritical = deckA11yScans.reduce((sum, item) => sum + item.critical, 0);
+  const deckTotalWarning = deckA11yScans.reduce((sum, item) => sum + item.warning, 0);
+  const slidesNeedingAttention = deckA11yScans.filter((item) => item.issues.length > 0);
+  const slidesNeedingAttentionCount = slidesNeedingAttention.length;
+
+  const rawDeckScore = 100 - (deckTotalCritical * 12 + deckTotalWarning * 4);
+  const globalDeckA11yScore = Math.max(30, Math.min(100, rawDeckScore));
+  const globalDeckGrade =
+    globalDeckA11yScore >= 95
+      ? 'A+'
+      : globalDeckA11yScore >= 85
+      ? 'A'
+      : globalDeckA11yScore >= 75
+      ? 'B'
+      : globalDeckA11yScore >= 60
+      ? 'C'
+      : 'Needs Review';
 
   // AI Copilot State
   const [aiPrompt, setAiPrompt] = useState<string>('');
@@ -275,7 +319,7 @@ export const SlideInspector: React.FC<SlideInspectorProps> = ({
   const currentLayoutOption = LAYOUT_OPTIONS.find((l) => l.id === slide.layout) || LAYOUT_OPTIONS[0];
 
   return (
-    <aside className="w-80 sm:w-84 bg-white border-l border-slate-200 flex flex-col shrink-0 h-full text-slate-700 text-xs shadow-xl z-20">
+    <aside className="w-full bg-white flex flex-col shrink-0 h-full text-slate-700 text-xs shadow-xs z-20 overflow-hidden">
       {/* Inspector Top Header */}
       <div className="p-3.5 bg-slate-900 text-white flex items-center justify-between shrink-0 border-b border-slate-800">
         <div className="flex items-center gap-2 font-black tracking-tight text-xs">
@@ -340,70 +384,96 @@ export const SlideInspector: React.FC<SlideInspectorProps> = ({
       </div>
 
       {/* Navigation Inspector Tabs */}
-      <div className="grid grid-cols-5 border-b border-slate-200 bg-slate-100/80 p-1 gap-1 text-[10px] font-extrabold shrink-0">
+      <div className="flex items-center border-b border-slate-200 bg-slate-100/90 p-1.5 gap-1 text-[11px] font-extrabold shrink-0 overflow-x-auto scrollbar-none">
         <button
           onClick={() => setActiveTab('layout')}
-          className={`py-1.5 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-0.5 cursor-pointer ${
+          className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
             activeTab === 'layout'
-              ? 'bg-white text-blue-700 shadow-2xs border border-slate-200/80'
-              : 'text-slate-500 hover:text-slate-800'
+              ? 'bg-white text-blue-700 shadow-xs border border-slate-200/80 font-black'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
           }`}
         >
-          <Layout className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Layout</span>
+          <Layout className="w-3.5 h-3.5 shrink-0" />
+          <span>Layout</span>
         </button>
 
         <button
           onClick={() => setActiveTab('content')}
-          className={`py-1.5 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-0.5 cursor-pointer ${
+          className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
             activeTab === 'content'
-              ? 'bg-white text-blue-700 shadow-2xs border border-slate-200/80'
-              : 'text-slate-500 hover:text-slate-800'
+              ? 'bg-white text-blue-700 shadow-xs border border-slate-200/80 font-black'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
           }`}
         >
-          <List className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Content</span>
+          <List className="w-3.5 h-3.5 shrink-0" />
+          <span>Content</span>
         </button>
 
         <button
           onClick={() => setActiveTab('media')}
-          className={`py-1.5 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-0.5 cursor-pointer ${
+          className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
             activeTab === 'media'
-              ? 'bg-white text-blue-700 shadow-2xs border border-slate-200/80'
-              : 'text-slate-500 hover:text-slate-800'
+              ? 'bg-white text-blue-700 shadow-xs border border-slate-200/80 font-black'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
           }`}
         >
-          <ImageIcon className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Media</span>
+          <ImageIcon className="w-3.5 h-3.5 shrink-0" />
+          <span>Media</span>
         </button>
 
         <button
           onClick={() => setActiveTab('presenter')}
-          className={`py-1.5 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-0.5 cursor-pointer ${
+          className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
             activeTab === 'presenter'
-              ? 'bg-white text-blue-700 shadow-2xs border border-slate-200/80'
-              : 'text-slate-500 hover:text-slate-800'
+              ? 'bg-white text-blue-700 shadow-xs border border-slate-200/80 font-black'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
           }`}
         >
-          <MessageSquare className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Notes</span>
+          <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+          <span>Notes</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('a11y')}
+          className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5 relative cursor-pointer shrink-0 ${
+            activeTab === 'a11y'
+              ? 'bg-emerald-600 text-white shadow-xs font-black'
+              : 'text-slate-700 hover:bg-emerald-50 hover:text-emerald-800'
+          }`}
+          title="Slide Accessibility & WCAG Scanner"
+        >
+          <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-emerald-400 fill-emerald-400/20" />
+          <span>A11y</span>
+          {accessibilityIssues.length > 0 && (
+            <span
+              className={`px-1.5 py-0.2 text-[9px] font-black rounded-full shrink-0 ${
+                activeTab === 'a11y'
+                  ? 'bg-white text-emerald-950'
+                  : criticalCount > 0
+                  ? 'bg-red-500 text-white'
+                  : 'bg-amber-500 text-slate-950'
+              }`}
+            >
+              {accessibilityIssues.length}
+            </span>
+          )}
         </button>
 
         <button
           onClick={() => setActiveTab('copilot')}
-          className={`py-1.5 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-0.5 cursor-pointer ${
+          className={`px-2.5 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
             activeTab === 'copilot'
               ? 'bg-blue-600 text-white shadow-xs font-black'
-              : 'text-blue-600 hover:bg-blue-50'
+              : 'text-blue-700 bg-blue-50/80 hover:bg-blue-100/90'
           }`}
         >
-          <Sparkles className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-          <span className="hidden sm:inline">AI Magic</span>
+          <Sparkles className="w-3.5 h-3.5 shrink-0 text-amber-400 fill-amber-400" />
+          <span>AI Magic</span>
         </button>
       </div>
 
       {/* Main Property Inspector Content Body */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-5">
+      <div className="flex-1 overflow-y-auto p-4 space-y-5 bg-slate-50/40">
         {/* TAB 1: LAYOUT & STYLING */}
         {activeTab === 'layout' && (
           <div className="space-y-5">
@@ -535,6 +605,52 @@ export const SlideInspector: React.FC<SlideInspectorProps> = ({
                   />
                   <span className="text-[10px] font-extrabold text-slate-400">36px</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Slide Transition Animation Selector */}
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <label className="font-extrabold text-slate-700 uppercase text-[10px] tracking-widest flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                  <span>Slide Transition Animation</span>
+                </label>
+                <span className="text-[10px] font-extrabold text-blue-600 bg-blue-100/80 px-1.5 py-0.5 rounded capitalize">
+                  {slide.transition || 'slide'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1.5">
+                {[
+                  { id: 'slide', label: 'Slide Left', desc: 'Horizontal slide' },
+                  { id: 'fade', label: 'Cross Fade', desc: 'Smooth opacity' },
+                  { id: 'zoom', label: 'Zoom Effect', desc: 'Focal scale' },
+                  { id: 'flip', label: '3D Flip', desc: 'Perspective flip' },
+                  { id: 'scale_up', label: 'Scale Up', desc: 'Expand & reveal' },
+                  { id: 'fade_up', label: 'Fade Up', desc: 'Vertical glide' },
+                ].map((tr) => {
+                  const isSelected = (slide.transition || 'slide') === tr.id;
+                  return (
+                    <button
+                      key={tr.id}
+                      type="button"
+                      onClick={() => onUpdateSlide({ ...slide, transition: tr.id as SlideTransitionType })}
+                      className={`p-2 rounded-xl text-left border transition cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs font-black'
+                          : 'bg-white hover:bg-slate-100/80 text-slate-700 border-slate-200/90'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between text-[11px] font-extrabold">
+                        <span>{tr.label}</span>
+                        {isSelected && <Check className="w-3 h-3 text-white shrink-0" />}
+                      </div>
+                      <span className={`text-[9px] font-medium mt-0.5 ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
+                        {tr.desc}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -998,6 +1114,28 @@ export const SlideInspector: React.FC<SlideInspectorProps> = ({
                 />
               </div>
 
+              {/* Image Alt-Text (Screen Readers) */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                    <span>Image Alt-Text (Screen Readers)</span>
+                  </label>
+                  {!slide.imageAltText && (
+                    <span className="text-[9px] text-amber-600 font-extrabold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                      WCAG Warning
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  value={slide.imageAltText || ''}
+                  onChange={(e) => onUpdateSlide({ ...slide, imageAltText: e.target.value })}
+                  placeholder="Describe image visual content for screen readers..."
+                  className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-emerald-600"
+                />
+              </div>
+
               {/* Curated Unsplash Stock Photo Gallery Presets */}
               <div className="pt-2 border-t border-slate-200/80 space-y-2">
                 <span className="text-[10px] font-extrabold uppercase text-slate-400 block tracking-wider">
@@ -1379,6 +1517,221 @@ export const SlideInspector: React.FC<SlideInspectorProps> = ({
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 6: ACCESSIBILITY & WCAG 2.1 SCANNER */}
+        {activeTab === 'a11y' && (
+          <div className="space-y-4">
+            {/* GLOBAL DECK ACCESSIBILITY HEALTH SCORE SUMMARY */}
+            <div className="p-4 rounded-2xl border bg-slate-900 text-white space-y-3 shadow-md">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                  <span className="font-extrabold text-xs uppercase tracking-wider text-slate-200">
+                    Deck Accessibility Score
+                  </span>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-slate-950">
+                  Grade {globalDeckGrade}
+                </span>
+              </div>
+
+              <div className="flex items-baseline justify-between border-b border-slate-800 pb-3">
+                <div>
+                  <div className="text-3xl font-black tracking-tight text-white flex items-baseline gap-1.5">
+                    <span>{globalDeckA11yScore}</span>
+                    <span className="text-xs text-slate-400 font-bold">/ 100</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                    {slidesNeedingAttentionCount === 0
+                      ? 'All slides meet WCAG 2.1 AA accessibility guidelines.'
+                      : `${slidesNeedingAttentionCount} of ${deckSlidesList.length} slide${deckSlidesList.length > 1 ? 's' : ''} need attention.`}
+                  </p>
+                </div>
+
+                <div className="text-right space-y-0.5">
+                  <div className="text-xs font-black text-amber-400">
+                    {slidesNeedingAttentionCount} Slide{slidesNeedingAttentionCount === 1 ? '' : 's'} Flagged
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-semibold">
+                    {deckTotalCritical} Critical • {deckTotalWarning} Warnings
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Metrics Bar */}
+              <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                <div className="p-2 bg-slate-800/80 rounded-xl border border-slate-700/60">
+                  <div className="text-slate-400 font-bold">Total Slides</div>
+                  <div className="text-sm font-black text-white">{deckSlidesList.length}</div>
+                </div>
+                <div className="p-2 bg-slate-800/80 rounded-xl border border-slate-700/60">
+                  <div className="text-slate-400 font-bold">Needing Fixes</div>
+                  <div className="text-sm font-black text-amber-400">{slidesNeedingAttentionCount}</div>
+                </div>
+                <div className="p-2 bg-slate-800/80 rounded-xl border border-slate-700/60">
+                  <div className="text-slate-400 font-bold">Compliant</div>
+                  <div className="text-sm font-black text-emerald-400">
+                    {deckSlidesList.length - slidesNeedingAttentionCount}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* DECK SLIDES ACCESSIBILITY MATRIX LIST */}
+            {deckSlidesList.length > 1 && (
+              <div className="p-3 bg-slate-50 border border-slate-200/90 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between text-[10px] font-extrabold uppercase text-slate-500 tracking-wider">
+                  <span>Deck Audit Matrix</span>
+                  <span>{slidesNeedingAttentionCount} Issue{slidesNeedingAttentionCount === 1 ? '' : 's'}</span>
+                </div>
+
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                  {deckA11yScans.map((scan) => {
+                    const isCurrent = scan.index === activeSlideIndex;
+                    const hasIssues = scan.issues.length > 0;
+
+                    return (
+                      <div
+                        key={scan.slide.id || scan.index}
+                        onClick={() => onSelectSlide && onSelectSlide(scan.index)}
+                        className={`p-2 rounded-xl text-xs font-semibold flex items-center justify-between transition cursor-pointer ${
+                          isCurrent
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'bg-white border border-slate-200 text-slate-800 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate pr-2">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-black shrink-0 ${
+                              isCurrent ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            #{scan.index + 1}
+                          </span>
+                          <span className="truncate text-[11px] font-bold">
+                            {scan.slide.title || 'Untitled Slide'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {hasIssues ? (
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[9px] font-black ${
+                                scan.critical > 0
+                                  ? isCurrent
+                                    ? 'bg-red-400 text-red-950'
+                                    : 'bg-red-100 text-red-800 border border-red-200'
+                                  : isCurrent
+                                  ? 'bg-amber-300 text-slate-950'
+                                  : 'bg-amber-100 text-amber-900 border border-amber-200'
+                              }`}
+                            >
+                              {scan.issues.length} Issue{scan.issues.length > 1 ? 's' : ''}
+                            </span>
+                          ) : (
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[9px] font-black flex items-center gap-1 ${
+                                isCurrent
+                                  ? 'bg-emerald-400 text-emerald-950'
+                                  : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              }`}
+                            >
+                              <CheckCircle2 className="w-2.5 h-2.5" />
+                              <span>Passing</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ACTIVE SLIDE DETAILED ACCESSIBILITY AUDIT */}
+            <div className="space-y-2 pt-1 border-t border-slate-200">
+              <div className="flex items-center justify-between">
+                <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1">
+                  <Eye className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Active Slide #{activeSlideIndex + 1} Scan</span>
+                </h4>
+                <span className="text-[10px] font-extrabold text-slate-600">
+                  {accessibilityIssues.length} issue{accessibilityIssues.length === 1 ? '' : 's'}
+                </span>
+              </div>
+
+              {accessibilityIssues.length === 0 ? (
+                <div className="p-4 bg-emerald-50/80 border border-emerald-200/90 rounded-2xl text-center space-y-1.5">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-600 mx-auto" />
+                  <h4 className="font-extrabold text-xs text-emerald-950">Active Slide Passes All Checks</h4>
+                  <p className="text-[11px] text-emerald-800 font-medium">
+                    Visual contrast ratios, title heading, and image alt-text meet WCAG 2.1 AA standards.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {accessibilityIssues.map((issue) => (
+                    <div
+                      key={issue.id}
+                      className={`p-3 rounded-2xl border space-y-2 transition ${
+                        issue.severity === 'critical'
+                          ? 'bg-red-50/60 border-red-200'
+                          : issue.severity === 'warning'
+                          ? 'bg-amber-50/60 border-amber-200'
+                          : 'bg-blue-50/60 border-blue-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          {issue.severity === 'critical' ? (
+                            <AlertTriangle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                          ) : issue.severity === 'warning' ? (
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          ) : (
+                            <Info className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                          )}
+                          <h4 className="font-black text-xs text-slate-900">{issue.title}</h4>
+                        </div>
+                        <span
+                          className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
+                            issue.severity === 'critical'
+                              ? 'bg-red-200 text-red-900'
+                              : issue.severity === 'warning'
+                              ? 'bg-amber-200 text-amber-900'
+                              : 'bg-blue-200 text-blue-900'
+                          }`}
+                        >
+                          {issue.severity}
+                        </span>
+                      </div>
+
+                      <p className="text-[11px] text-slate-700 font-medium leading-relaxed">
+                        {issue.description}
+                      </p>
+
+                      <div className="text-[11px] font-extrabold text-slate-900 bg-white/80 p-2 rounded-xl border border-slate-200/80">
+                        <span className="text-slate-500 font-bold uppercase text-[9px] block">Action:</span>
+                        {issue.suggestion}
+                      </div>
+
+                      {/* Auto Fix Button */}
+                      {issue.autoFix && (
+                        <button
+                          type="button"
+                          onClick={() => onUpdateSlide(issue.autoFix!(slide))}
+                          className="w-full py-1.5 px-3 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                        >
+                          <Wand2 className="w-3.5 h-3.5 text-amber-400" />
+                          <span>1-Tap Auto-Fix Issue</span>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

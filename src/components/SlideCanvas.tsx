@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { SlideData, ThemePreset } from '../types';
 import {
   Plus,
@@ -108,20 +109,70 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
     updateField('bullets', current);
   };
 
+  const getTransitionVariants = (type?: string) => {
+    switch (type) {
+      case 'fade':
+        return {
+          initial: { opacity: 0 },
+          animate: { opacity: 1 },
+          exit: { opacity: 0 },
+        };
+      case 'zoom':
+        return {
+          initial: { opacity: 0, scale: 0.9 },
+          animate: { opacity: 1, scale: 1 },
+          exit: { opacity: 0, scale: 1.1 },
+        };
+      case 'flip':
+        return {
+          initial: { opacity: 0, rotateY: 90 },
+          animate: { opacity: 1, rotateY: 0 },
+          exit: { opacity: 0, rotateY: -90 },
+        };
+      case 'scale_up':
+        return {
+          initial: { opacity: 0, scale: 0.8 },
+          animate: { opacity: 1, scale: 1 },
+          exit: { opacity: 0, scale: 1.08 },
+        };
+      case 'fade_up':
+        return {
+          initial: { opacity: 0, y: 35 },
+          animate: { opacity: 1, y: 0 },
+          exit: { opacity: 0, y: -35 },
+        };
+      case 'slide':
+      default:
+        return {
+          initial: { opacity: 0, x: 50 },
+          animate: { opacity: 1, x: 0 },
+          exit: { opacity: 0, x: -50 },
+        };
+    }
+  };
+
+  const variants = getTransitionVariants(slide.transition);
+
   return (
     <main className="flex-1 bg-slate-100/80 p-4 sm:p-8 flex items-center justify-center overflow-auto relative">
       {/* Background Subtle Grid Accent */}
       <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none opacity-60" />
 
-      {/* 16:9 Widescreen Slide Container */}
-      <div
-        className="w-full max-w-5xl aspect-[16/9] rounded-2xl shadow-2xl overflow-hidden flex flex-col justify-between p-8 sm:p-12 relative transition-all border border-slate-200/80 z-10"
-        style={{
-          backgroundColor: theme.bgColor,
-          color: theme.textColor,
-          fontFamily: theme.fontFamily,
-        }}
-      >
+      <AnimatePresence mode="wait">
+        {/* 16:9 Widescreen Slide Container */}
+        <motion.div
+          key={slide.id}
+          initial={variants.initial}
+          animate={variants.animate}
+          exit={variants.exit}
+          transition={{ duration: 0.35, ease: 'easeInOut' }}
+          className="w-full max-w-5xl aspect-[16/9] rounded-2xl shadow-2xl overflow-hidden flex flex-col justify-between p-4 sm:p-8 md:p-10 lg:p-12 relative border border-slate-200/80 z-10"
+          style={{
+            backgroundColor: theme.bgColor,
+            color: theme.textColor,
+            fontFamily: theme.fontFamily,
+          }}
+        >
         {/* Top Header Row (Eyebrow & Accent Badge) */}
         <div className="flex items-center justify-between shrink-0 mb-4">
           {/* Eyebrow */}
@@ -232,7 +283,7 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
                 <div className="relative w-full h-32 sm:h-40 overflow-hidden">
                   <img
                     src={slide.imageUrl}
-                    alt={slide.mediaCaption || slide.title}
+                    alt={slide.imageAltText || slide.mediaCaption || slide.title || 'Slide Image'}
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       (e.target as HTMLElement).style.display = 'none';
@@ -575,7 +626,8 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
           isActive={isAnnotating}
           onToggleActive={setIsAnnotating}
         />
-      </div>
-    </main>
+      </motion.div>
+    </AnimatePresence>
+  </main>
   );
 };

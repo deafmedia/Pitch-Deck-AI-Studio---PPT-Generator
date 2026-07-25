@@ -1,4 +1,14 @@
 import React from 'react';
+import {
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
+  LayoutGrid,
+  Sliders,
+  Eye,
+  ShieldCheck
+} from 'lucide-react';
 import { SAMPLE_DECKS, THEME_PRESETS } from './data/templates';
 import { PitchDeck, SlideData, SlideLayoutType, ThemePresetId } from './types';
 import { Navbar } from './components/Navbar';
@@ -46,6 +56,11 @@ export default function App() {
   const [isExportModalOpen, setIsExportModalOpen] = React.useState<boolean>(false);
   const [isFileExplorerOpen, setIsFileExplorerOpen] = React.useState<boolean>(false);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = React.useState<boolean>(false);
+
+  // Responsive Layout & Panel Toggle State
+  const [isLeftPanelOpen, setIsLeftPanelOpen] = React.useState<boolean>(true);
+  const [isRightPanelOpen, setIsRightPanelOpen] = React.useState<boolean>(true);
+  const [mobileTab, setMobileTab] = React.useState<'slides' | 'canvas' | 'inspector'>('canvas');
 
   // Auto-saving Status Indicator state
   const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('saved');
@@ -287,6 +302,7 @@ export default function App() {
       {/* Top Navigation */}
       <Navbar
         currentDeck={currentDeck}
+        activeSlideIndex={activeSlideIndex}
         saveStatus={saveStatus}
         onSelectSlideIndex={setActiveSlideIndex}
         onSelectDeck={handleSelectDeck}
@@ -307,40 +323,202 @@ export default function App() {
       />
 
       {/* Main Studio Viewport */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Thumbnails */}
-        <SlideThumbnails
-          slides={currentDeck.slides}
-          activeSlideIndex={activeSlideIndex}
-          onSelectSlide={setActiveSlideIndex}
-          onAddSlide={handleAddSlide}
-          onDuplicateSlide={handleDuplicateSlide}
-          onDeleteSlide={handleDeleteSlide}
-          onMoveSlide={handleMoveSlide}
-        />
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Left Thumbnails Sidebar (Desktop & Mobile Overlay) */}
+        <div
+          className={`${
+            mobileTab === 'slides'
+              ? 'fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs flex sm:relative sm:z-auto sm:bg-transparent'
+              : isLeftPanelOpen
+              ? 'hidden lg:flex'
+              : 'hidden'
+          }`}
+        >
+          <div className="w-72 sm:w-64 h-full bg-slate-50 flex flex-col z-50 sm:z-auto border-r border-slate-200">
+            {/* Mobile Drawer Close Header */}
+            <div className="lg:hidden p-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between text-xs font-bold text-slate-700">
+              <span className="flex items-center gap-1.5">
+                <LayoutGrid className="w-4 h-4 text-blue-600" />
+                <span>SLIDES EXPLORER</span>
+              </span>
+              <button
+                onClick={() => setMobileTab('canvas')}
+                className="px-2 py-1 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 text-[11px] font-extrabold cursor-pointer"
+              >
+                Close ✕
+              </button>
+            </div>
 
-        {/* Center Canvas */}
-        {activeSlide && (
-          <SlideCanvas
-            slide={activeSlide}
-            theme={activeTheme}
-            onUpdateSlide={handleUpdateActiveSlide}
-          />
-        )}
+            <SlideThumbnails
+              slides={currentDeck.slides}
+              activeSlideIndex={activeSlideIndex}
+              onSelectSlide={(idx) => {
+                setActiveSlideIndex(idx);
+                setMobileTab('canvas');
+              }}
+              onAddSlide={handleAddSlide}
+              onDuplicateSlide={handleDuplicateSlide}
+              onDeleteSlide={handleDeleteSlide}
+              onMoveSlide={handleMoveSlide}
+            />
+          </div>
+        </div>
 
-        {/* Right Inspector */}
-        {activeSlide && (
-          <SlideInspector
-            slide={activeSlide}
-            theme={activeTheme}
-            onUpdateSlide={handleUpdateActiveSlide}
-            activeSlideIndex={activeSlideIndex}
-            totalSlides={currentDeck.slides.length}
-            onDuplicateSlide={() => handleDuplicateSlide(activeSlideIndex)}
-            onDeleteSlide={() => handleDeleteSlide(activeSlideIndex)}
-            onMoveSlide={handleMoveSlide}
-          />
-        )}
+        {/* Center Canvas Viewport */}
+        <div
+          className={`flex-1 flex flex-col relative min-w-0 overflow-hidden ${
+            mobileTab === 'canvas' ? 'flex' : 'hidden lg:flex'
+          }`}
+        >
+          {/* Desktop Floating Panel Toggle Controls */}
+          <div className="hidden lg:flex items-center justify-between absolute top-3 left-3 right-3 z-30 pointer-events-none">
+            {/* Left Panel Toggle */}
+            <button
+              onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
+              className={`pointer-events-auto p-2 border rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 text-xs font-extrabold backdrop-blur-md active:scale-95 ${
+                isLeftPanelOpen
+                  ? 'bg-blue-50/95 text-blue-700 border-blue-400/80 ring-2 ring-blue-500/20 hover:bg-blue-100/90 hover:border-blue-500'
+                  : 'bg-white/90 hover:bg-white text-slate-700 hover:text-blue-600 border-slate-200/90'
+              }`}
+              title={isLeftPanelOpen ? 'Collapse Slides Panel' : 'Expand Slides Panel'}
+            >
+              <div className="relative flex items-center justify-center">
+                {isLeftPanelOpen ? (
+                  <PanelLeftClose className="w-4 h-4 text-blue-600" />
+                ) : (
+                  <PanelLeftOpen className="w-4 h-4 text-blue-600" />
+                )}
+                {isLeftPanelOpen && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full animate-pulse ring-2 ring-white" />
+                )}
+              </div>
+              <span className="text-[10px] uppercase tracking-wider">{isLeftPanelOpen ? 'Hide Slides' : 'Slides'}</span>
+            </button>
+
+            {/* Right Panel Toggle */}
+            <button
+              onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
+              className={`pointer-events-auto p-2 border rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 text-xs font-extrabold backdrop-blur-md active:scale-95 ${
+                isRightPanelOpen
+                  ? 'bg-blue-50/95 text-blue-700 border-blue-400/80 ring-2 ring-blue-500/20 hover:bg-blue-100/90 hover:border-blue-500'
+                  : 'bg-white/90 hover:bg-white text-slate-700 hover:text-blue-600 border-slate-200/90'
+              }`}
+              title={isRightPanelOpen ? 'Collapse Inspector Panel' : 'Expand Inspector Panel'}
+            >
+              <span className="text-[10px] uppercase tracking-wider">{isRightPanelOpen ? 'Hide Inspector' : 'Inspector'}</span>
+              <div className="relative flex items-center justify-center">
+                {isRightPanelOpen ? (
+                  <PanelRightClose className="w-4 h-4 text-blue-600" />
+                ) : (
+                  <PanelRightOpen className="w-4 h-4 text-blue-600" />
+                )}
+                {isRightPanelOpen && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full animate-pulse ring-2 ring-white" />
+                )}
+              </div>
+            </button>
+          </div>
+
+          {activeSlide && (
+            <SlideCanvas
+              slide={activeSlide}
+              theme={activeTheme}
+              onUpdateSlide={handleUpdateActiveSlide}
+            />
+          )}
+        </div>
+
+        {/* Right Inspector Sidebar (Desktop & Mobile Overlay) */}
+        <div
+          className={`${
+            mobileTab === 'inspector'
+              ? 'fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs flex justify-end sm:relative sm:z-auto sm:bg-transparent'
+              : isRightPanelOpen
+              ? 'hidden lg:flex'
+              : 'hidden'
+          }`}
+        >
+          <div className="w-full sm:w-80 md:w-96 lg:w-[380px] xl:w-[410px] h-full bg-white flex flex-col z-50 sm:z-auto border-l border-slate-200/90 shadow-xl shrink-0">
+            {/* Mobile Inspector Header Close */}
+            <div className="lg:hidden p-2.5 bg-slate-900 text-white flex items-center justify-between text-xs font-bold">
+              <span className="flex items-center gap-1.5 font-black text-xs uppercase">
+                <Sliders className="w-4 h-4 text-blue-400" />
+                <span>INSPECTOR & PROPERTIES</span>
+              </span>
+              <button
+                onClick={() => setMobileTab('canvas')}
+                className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-extrabold cursor-pointer border border-slate-700"
+              >
+                Close ✕
+              </button>
+            </div>
+
+            {activeSlide && (
+              <SlideInspector
+                slide={activeSlide}
+                allSlides={currentDeck.slides}
+                theme={activeTheme}
+                onUpdateSlide={handleUpdateActiveSlide}
+                activeSlideIndex={activeSlideIndex}
+                totalSlides={currentDeck.slides.length}
+                onDuplicateSlide={() => handleDuplicateSlide(activeSlideIndex)}
+                onDeleteSlide={() => handleDeleteSlide(activeSlideIndex)}
+                onMoveSlide={handleMoveSlide}
+                onSelectSlide={(index) => {
+                  setActiveSlideIndex(index);
+                }}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* MOBILE STICKY BOTTOM NAVIGATION BAR (< lg) */}
+      <div className="lg:hidden bg-slate-900 border-t border-slate-800 px-3 py-2 flex items-center justify-around text-slate-300 shrink-0 z-30 shadow-lg">
+        <button
+          onClick={() => setMobileTab('slides')}
+          className={`flex-1 py-1.5 px-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+            mobileTab === 'slides'
+              ? 'bg-blue-600 text-white font-extrabold shadow-md'
+              : 'hover:bg-slate-800 text-slate-400 font-bold'
+          }`}
+        >
+          <div className="flex items-center gap-1">
+            <LayoutGrid className="w-4 h-4" />
+            <span className="text-[10px] uppercase font-black tracking-wider">Slides</span>
+          </div>
+          <span className="text-[9px] opacity-80">({currentDeck.slides.length})</span>
+        </button>
+
+        <button
+          onClick={() => setMobileTab('canvas')}
+          className={`flex-1 py-1.5 px-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+            mobileTab === 'canvas'
+              ? 'bg-blue-600 text-white font-extrabold shadow-md'
+              : 'hover:bg-slate-800 text-slate-400 font-bold'
+          }`}
+        >
+          <div className="flex items-center gap-1">
+            <Eye className="w-4 h-4" />
+            <span className="text-[10px] uppercase font-black tracking-wider">Canvas</span>
+          </div>
+          <span className="text-[9px] opacity-80">#{activeSlideIndex + 1}</span>
+        </button>
+
+        <button
+          onClick={() => setMobileTab('inspector')}
+          className={`flex-1 py-1.5 px-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+            mobileTab === 'inspector'
+              ? 'bg-blue-600 text-white font-extrabold shadow-md'
+              : 'hover:bg-slate-800 text-slate-400 font-bold'
+          }`}
+        >
+          <div className="flex items-center gap-1">
+            <Sliders className="w-4 h-4" />
+            <span className="text-[10px] uppercase font-black tracking-wider">Inspector</span>
+          </div>
+          <span className="text-[9px] opacity-80">Edit</span>
+        </button>
       </div>
 
       {/* AI Generator Modal */}

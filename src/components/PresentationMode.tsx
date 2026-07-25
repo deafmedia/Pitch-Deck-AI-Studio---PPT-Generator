@@ -73,15 +73,17 @@ export const PresentationMode: React.FC<PresentationModeProps> = ({
   };
 
   // Motion variants according to chosen transition style
+  const activeTransition = currentSlide.transition || transitionStyle;
+
   const getVariants = () => {
-    if (transitionStyle === 'fade') {
+    if (activeTransition === 'fade') {
       return {
         enter: { opacity: 0, scale: 0.98 },
         center: { opacity: 1, scale: 1 },
         exit: { opacity: 0, scale: 0.98 },
       };
     }
-    if (transitionStyle === 'zoom') {
+    if (activeTransition === 'zoom') {
       return {
         enter: (dir: number) => ({ opacity: 0, scale: dir > 0 ? 1.15 : 0.85 }),
         center: { opacity: 1, scale: 1 },

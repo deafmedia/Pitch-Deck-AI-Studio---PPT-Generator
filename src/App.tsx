@@ -29,8 +29,15 @@ export default function App() {
 
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState<boolean>(false);
 
-  // Default to the DEF Demo UX Pitch Deck (which matches the attached prompt brief)
-  const [currentDeck, setCurrentDeck] = React.useState<PitchDeck>(SAMPLE_DECKS[0]);
+  // Pitch Deck state with initial load from localStorage
+  const [currentDeck, setCurrentDeck] = React.useState<PitchDeck>(() => {
+    try {
+      const saved = localStorage.getItem('ac_pitch_deck_v1');
+      return saved ? JSON.parse(saved) : SAMPLE_DECKS[0];
+    } catch (e) {
+      return SAMPLE_DECKS[0];
+    }
+  });
   const [activeSlideIndex, setActiveSlideIndex] = React.useState<number>(0);
   const [isAiModalOpen, setIsAiModalOpen] = React.useState<boolean>(false);
   const [isPresenting, setIsPresenting] = React.useState<boolean>(false);
@@ -38,8 +45,33 @@ export default function App() {
   const [isExportModalOpen, setIsExportModalOpen] = React.useState<boolean>(false);
   const [isFileExplorerOpen, setIsFileExplorerOpen] = React.useState<boolean>(false);
 
+  // Auto-saving Status Indicator state
+  const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('saved');
+  const isFirstRender = React.useRef(true);
+
+  // Debounced 500ms LocalStorage Persistence Effect
+  React.useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    setSaveStatus('saving');
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem('ac_pitch_deck_v1', JSON.stringify(currentDeck));
+        setSaveStatus('saved');
+      } catch (e) {
+        console.warn('LocalStorage save error:', e);
+        setSaveStatus('saved');
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [currentDeck]);
+
   // Deck Undo / Redo History Stack
-  const [history, setHistory] = React.useState<PitchDeck[]>([SAMPLE_DECKS[0]]);
+  const [history, setHistory] = React.useState<PitchDeck[]>([currentDeck]);
   const [historyIndex, setHistoryIndex] = React.useState<number>(0);
 
   // Auth Action Callbacks
@@ -253,6 +285,7 @@ export default function App() {
       {/* Top Navigation */}
       <Navbar
         currentDeck={currentDeck}
+        saveStatus={saveStatus}
         onSelectSlideIndex={setActiveSlideIndex}
         onSelectDeck={handleSelectDeck}
         onThemeChange={handleThemeChange}
@@ -298,6 +331,11 @@ export default function App() {
             slide={activeSlide}
             theme={activeTheme}
             onUpdateSlide={handleUpdateActiveSlide}
+            activeSlideIndex={activeSlideIndex}
+            totalSlides={currentDeck.slides.length}
+            onDuplicateSlide={() => handleDuplicateSlide(activeSlideIndex)}
+            onDeleteSlide={() => handleDeleteSlide(activeSlideIndex)}
+            onMoveSlide={handleMoveSlide}
           />
         )}
       </div>

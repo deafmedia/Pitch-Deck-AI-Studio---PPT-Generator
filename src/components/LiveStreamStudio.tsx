@@ -209,7 +209,7 @@ export const LiveStreamStudio: React.FC<LiveStreamStudioProps> = ({
 
     const captionPhrases = [
       `Slide ${currentIndex + 1}: ${currentSlide.title}. Key highlight: ${currentSlide.bullets?.[0] || 'Deaf-first technology platform'}.`,
-      "VRS Sign Language Interpreter #4092 translating in real-time American Sign Language (ASL).",
+      "VRS Sign Language Interpreter #4092 translating in real-time Indian Sign Language (ISL).",
       activeLiveQuestion ? `Answering Personnel Q&A from ${activeLiveQuestion.author}: "${activeLiveQuestion.text}"` : "Live Captions: 'Our architecture ensures zero-latency streaming for critical emergency relay calls.'",
       "Presenter Alex Morgan: 'Notice how the accessibility features are built directly into the slide deck layout.'"
     ];
@@ -311,7 +311,7 @@ export const LiveStreamStudio: React.FC<LiveStreamStudioProps> = ({
               {deck.title}
               <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-1">
                 <Video className="w-3 h-3 text-blue-400" />
-                4 Personnel Cams + ASL Relay
+                4 Personnel Cams + ISL Relay
               </span>
             </h1>
             <p className="text-[11px] text-slate-400 flex items-center gap-3">
@@ -808,7 +808,7 @@ export const LiveStreamStudio: React.FC<LiveStreamStudioProps> = ({
             })()
           )}
 
-          {/* Feed 2: Sign Language Interpreter Stream (VRS / ASL Certified) */}
+          {/* Feed 2: Sign Language Interpreter Stream (VRS / ISL Certified) */}
           {isInterpreterActive && (
             <div
               onClick={() => setLayoutMode(layoutMode === 'interpreter_focus' ? 'side_by_side' : 'interpreter_focus')}
@@ -846,7 +846,7 @@ export const LiveStreamStudio: React.FC<LiveStreamStudioProps> = ({
                 <div className="mt-3 text-center">
                   <span className="text-xs font-extrabold text-white flex items-center justify-center gap-1.5">
                     <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-                    Certified ASL Interpreter #4092
+                    Certified ISL Interpreter #4092
                   </span>
                   <span className="text-[10px] text-purple-300 font-medium block mt-0.5">
                     Live VRS Sign Language Feed • RID Certified

@@ -73,7 +73,15 @@ export interface SlideData {
   teamMembers?: TeamMember[];
   timelineSteps?: TimelineStep[];
   speakerNotes?: string;
+  privateChecklist?: { id: string; text: string; done: boolean }[];
   accentBadge?: string;
+  titleFontSize?: number; // e.g. 20 to 48 px
+  subtitleFontSize?: number; // e.g. 12 to 24 px
+  transition?: 'fade' | 'slide' | 'zoom';
+  imageUrl?: string;
+  videoUrl?: string;
+  iconName?: string;
+  mediaCaption?: string;
 }
 
 export interface PitchDeck {

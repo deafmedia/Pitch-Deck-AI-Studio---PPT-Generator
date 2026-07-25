@@ -1,7 +1,72 @@
 import React from 'react';
 import { SlideData, ThemePreset } from '../types';
-import { Plus, Trash2, Edit2, CheckCircle2, TrendingUp, Layers, Table, Clock, Pencil } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  CheckCircle2,
+  Pencil,
+  Target,
+  Users,
+  Sparkles,
+  Shield,
+  Rocket,
+  Globe,
+  BarChart3,
+  Cpu,
+  Layers,
+  Zap,
+  Heart,
+  Award,
+  Smartphone,
+  Laptop,
+  Cloud,
+  Video,
+  Image as ImageIcon,
+  Play,
+  Film,
+  FileText
+} from 'lucide-react';
 import { AnnotationCanvas } from './AnnotationCanvas';
+
+const ICON_MAP: Record<string, React.FC<{ className?: string; style?: React.CSSProperties }>> = {
+  Sparkles,
+  Shield,
+  Rocket,
+  Target,
+  Globe,
+  BarChart3,
+  Users,
+  Cpu,
+  Layers,
+  Zap,
+  Heart,
+  Award,
+  Smartphone,
+  Laptop,
+  Cloud,
+  Video,
+  ImageIcon,
+  Play,
+  Film,
+  FileText
+};
+
+const getVideoEmbedUrl = (url?: string) => {
+  if (!url) return null;
+  if (url.includes('youtube.com/watch?v=')) {
+    const id = url.split('v=')[1]?.split('&')[0];
+    return `https://www.youtube.com/embed/${id}?autoplay=0`;
+  }
+  if (url.includes('youtu.be/')) {
+    const id = url.split('youtu.be/')[1]?.split('?')[0];
+    return `https://www.youtube.com/embed/${id}?autoplay=0`;
+  }
+  if (url.includes('vimeo.com/')) {
+    const id = url.split('vimeo.com/')[1]?.split('?')[0];
+    return `https://player.vimeo.com/video/${id}`;
+  }
+  return url;
+};
 
 interface SlideCanvasProps {
   slide: SlideData;
@@ -14,7 +79,6 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
   theme,
   onUpdateSlide,
 }) => {
-  const [editingField, setEditingField] = React.useState<string | null>(null);
   const [isAnnotating, setIsAnnotating] = React.useState<boolean>(false);
 
   // Field change helper
@@ -102,6 +166,22 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
 
         {/* Main Content Area by Layout */}
         <div className="flex-1 flex flex-col justify-center overflow-hidden my-2">
+          {/* Optional Slide Icon */}
+          {slide.iconName && ICON_MAP[slide.iconName] && (
+            <div className="mb-2">
+              <div
+                className="inline-flex p-2 rounded-xl border shadow-2xs"
+                style={{
+                  backgroundColor: theme.cardBg,
+                  borderColor: theme.accentColor,
+                  color: theme.accentColor,
+                }}
+              >
+                {React.createElement(ICON_MAP[slide.iconName], { className: 'w-5 h-5' })}
+              </div>
+            </div>
+          )}
+
           {/* Slide Main Title */}
           <textarea
             value={slide.title}
@@ -109,7 +189,10 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
             rows={2}
             placeholder="Slide Main Title..."
             className="w-full font-bold text-2xl sm:text-4xl tracking-tight bg-transparent focus:outline-none resize-none leading-tight border-b border-transparent hover:border-slate-500/30 mb-2"
-            style={{ color: theme.textColor }}
+            style={{
+              color: theme.textColor,
+              fontSize: slide.titleFontSize ? `${slide.titleFontSize}px` : undefined,
+            }}
           />
 
           {/* Subtitle */}
@@ -118,9 +201,52 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
             value={slide.subtitle || ''}
             onChange={(e) => updateField('subtitle', e.target.value)}
             placeholder="Add descriptive subtitle or core premise..."
-            className="w-full text-sm sm:text-lg opacity-80 bg-transparent focus:outline-none border-b border-transparent hover:border-slate-500/30 mb-6"
-            style={{ color: theme.secondaryColor }}
+            className="w-full text-sm sm:text-lg opacity-80 bg-transparent focus:outline-none border-b border-transparent hover:border-slate-500/30 mb-4"
+            style={{
+              color: theme.secondaryColor,
+              fontSize: slide.subtitleFontSize ? `${slide.subtitleFontSize}px` : undefined,
+            }}
           />
+
+          {/* Optional Slide Media Display (Image or Video Embed) */}
+          {(slide.imageUrl || slide.videoUrl) && (
+            <div
+              className="mb-4 rounded-xl overflow-hidden border shadow-2xs max-h-40 sm:max-h-48 relative shrink-0"
+              style={{ borderColor: theme.cardBorder, backgroundColor: theme.cardBg }}
+            >
+              {slide.videoUrl ? (
+                <div className="w-full aspect-video max-h-40 sm:max-h-48 bg-black flex items-center justify-center">
+                  {getVideoEmbedUrl(slide.videoUrl) ? (
+                    <iframe
+                      src={getVideoEmbedUrl(slide.videoUrl)!}
+                      title="Slide Embedded Video"
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <video src={slide.videoUrl} controls className="w-full h-full object-contain" />
+                  )}
+                </div>
+              ) : (
+                <div className="relative w-full h-32 sm:h-40 overflow-hidden">
+                  <img
+                    src={slide.imageUrl}
+                    alt={slide.mediaCaption || slide.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                  {slide.mediaCaption && (
+                    <div className="absolute bottom-0 inset-x-0 bg-slate-950/75 backdrop-blur-xs text-white text-[10px] font-medium px-3 py-1 truncate">
+                      {slide.mediaCaption}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* LAYOUT: Title Cover */}
           {slide.layout === 'title' && (
@@ -136,7 +262,7 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
                   />
                   <button
                     onClick={() => handleRemoveBullet(idx)}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-300 text-xs"
+                    className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-300 text-xs cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -144,7 +270,7 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
               ))}
               <button
                 onClick={handleAddBullet}
-                className="flex items-center gap-1.5 text-xs font-semibold hover:underline opacity-80 mt-2"
+                className="flex items-center gap-1.5 text-xs font-semibold hover:underline opacity-80 mt-2 cursor-pointer"
                 style={{ color: theme.accentColor }}
               >
                 <Plus className="w-3.5 h-3.5" /> Add Key Takeaway
@@ -208,23 +334,6 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
                   </div>
                 ))}
               </div>
-
-              {/* Supporting bullets under stats */}
-              {(slide.bullets || []).length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-slate-700/30">
-                  {slide.bullets?.map((b, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-xs sm:text-sm">
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: theme.accentColor }} />
-                      <input
-                        type="text"
-                        value={b}
-                        onChange={(e) => handleEditBullet(idx, e.target.value)}
-                        className="w-full bg-transparent focus:outline-none"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 
@@ -289,7 +398,6 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
           {/* LAYOUT: Problem vs Solution */}
           {slide.layout === 'problem_solution' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Problem Column */}
               <div
                 className="p-4 rounded-xl border space-y-3"
                 style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
@@ -305,7 +413,6 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
                 ))}
               </div>
 
-              {/* Solution Column */}
               <div
                 className="p-4 rounded-xl border space-y-3"
                 style={{ backgroundColor: theme.cardBg, borderColor: theme.accentColor }}
@@ -320,6 +427,60 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* LAYOUT: Market Opportunity */}
+          {slide.layout === 'market' && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+              {[
+                { title: 'TAM (Total Addressable)', val: '$12.5 Billion', desc: 'Global accessible deaf & hard of hearing ecosystem' },
+                { title: 'SAM (Serviceable Market)', val: '$3.2 Billion', desc: 'Regional sign language translation & relay services' },
+                { title: 'SOM (Obtainable Market)', val: '$450 Million', desc: 'Initial targeted institutional & enterprise adopters' },
+              ].map((m, idx) => (
+                <div
+                  key={idx}
+                  className="p-4 rounded-xl border flex flex-col justify-between space-y-2"
+                  style={{ backgroundColor: theme.cardBg, borderColor: idx === 1 ? theme.accentColor : theme.cardBorder }}
+                >
+                  <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-amber-400">
+                    <Target className="w-3.5 h-3.5" />
+                    <span>{m.title}</span>
+                  </div>
+                  <div className="text-2xl font-black" style={{ color: theme.textColor }}>{m.val}</div>
+                  <p className="text-[11px] opacity-70" style={{ color: theme.secondaryColor }}>{m.desc}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* LAYOUT: Team Members */}
+          {slide.layout === 'team' && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {(slide.teamMembers || [
+                { name: 'Dr. Sarah Connor', role: 'Founder & CEO', bio: 'Deaf accessibility champion, 12+ yrs ISL research.', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah' },
+                { name: 'Alex Rivera', role: 'Chief Product Officer', bio: 'Former Lead Product Designer at Studio Design.', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex' },
+                { name: 'Priya Sharma', role: 'Head of Interpreter Ops', bio: 'Certified ISL Relay Director & Community Lead.', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Priya' },
+              ]).map((member, idx) => (
+                <div
+                  key={idx}
+                  className="p-4 rounded-xl border flex flex-col items-center text-center space-y-2"
+                  style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
+                >
+                  <img
+                    src={member.avatarUrl}
+                    alt={member.name}
+                    className="w-12 h-12 rounded-full border-2 border-slate-700 bg-slate-800 object-cover"
+                  />
+                  <div>
+                    <div className="font-bold text-xs" style={{ color: theme.textColor }}>{member.name}</div>
+                    <div className="text-[10px] font-extrabold text-blue-400 uppercase tracking-wider">{member.role}</div>
+                  </div>
+                  <p className="text-[11px] opacity-75 leading-relaxed" style={{ color: theme.secondaryColor }}>
+                    {member.bio}
+                  </p>
+                </div>
+              ))}
             </div>
           )}
 

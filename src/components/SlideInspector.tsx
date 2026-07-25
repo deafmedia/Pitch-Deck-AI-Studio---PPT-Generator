@@ -103,11 +103,97 @@ export const SlideInspector: React.FC<SlideInspectorProps> = ({
   onDeleteSlide,
   onMoveSlide,
 }) => {
-  const [activeTab, setActiveTab] = useState<'layout' | 'content' | 'media' | 'presenter'>('layout');
+  const [activeTab, setActiveTab] = useState<'layout' | 'content' | 'media' | 'presenter' | 'copilot'>('layout');
   const [isGalleryOpen, setIsGalleryOpen] = useState<boolean>(false);
   const [isImageLibraryOpen, setIsImageLibraryOpen] = useState<boolean>(false);
   const [copiedNotes, setCopiedNotes] = useState<boolean>(false);
   const [newCheckitemText, setNewCheckitemText] = useState<string>('');
+
+  // AI Copilot State
+  const [aiPrompt, setAiPrompt] = useState<string>('');
+  const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
+  const [targetLang, setTargetLang] = useState<string>('Spanish');
+  const [isTranslating, setIsTranslating] = useState<boolean>(false);
+
+  // AI Slide Rewrite Handler
+  const handleAiRewriteSlide = async () => {
+    if (!aiPrompt.trim()) return;
+    setIsAiGenerating(true);
+    try {
+      const res = await fetch('/api/generate-slide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: aiPrompt,
+          currentSlide: slide,
+          layout: slide.layout,
+        }),
+      });
+      const data = await res.json();
+      if (data.slide) {
+        onUpdateSlide({
+          ...slide,
+          ...data.slide,
+        });
+        setAiPrompt('');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
+  // AI Speaker Notes Auto-Draft
+  const handleAiSpeakerNotes = async () => {
+    setIsAiGenerating(true);
+    try {
+      const res = await fetch('/api/generate-speaker-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slideTitle: slide.title,
+          slideSubtitle: slide.subtitle,
+          bullets: slide.bullets,
+          layout: slide.layout,
+        }),
+      });
+      const data = await res.json();
+      if (data.speakerNotes) {
+        onUpdateSlide({
+          ...slide,
+          speakerNotes: data.speakerNotes,
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
+  // AI Slide Translator
+  const handleTranslateSlide = async () => {
+    setIsTranslating(true);
+    try {
+      const res = await fetch('/api/translate-slide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slide,
+          targetLanguage: targetLang,
+        }),
+      });
+      const data = await res.json();
+      if (data.slide) {
+        onUpdateSlide(data.slide);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   // Speaker notes word and speaking time metrics
   const notesText = slide.speakerNotes || '';
@@ -254,53 +340,65 @@ export const SlideInspector: React.FC<SlideInspectorProps> = ({
       </div>
 
       {/* Navigation Inspector Tabs */}
-      <div className="grid grid-cols-4 border-b border-slate-200 bg-slate-100/80 p-1 gap-1 text-[10px] font-extrabold shrink-0">
+      <div className="grid grid-cols-5 border-b border-slate-200 bg-slate-100/80 p-1 gap-1 text-[10px] font-extrabold shrink-0">
         <button
           onClick={() => setActiveTab('layout')}
-          className={`py-1.5 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+          className={`py-1.5 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-0.5 cursor-pointer ${
             activeTab === 'layout'
               ? 'bg-white text-blue-700 shadow-2xs border border-slate-200/80'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <Layout className="w-3.5 h-3.5" />
-          <span>Layout</span>
+          <span className="hidden sm:inline">Layout</span>
         </button>
 
         <button
           onClick={() => setActiveTab('content')}
-          className={`py-1.5 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+          className={`py-1.5 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-0.5 cursor-pointer ${
             activeTab === 'content'
               ? 'bg-white text-blue-700 shadow-2xs border border-slate-200/80'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <List className="w-3.5 h-3.5" />
-          <span>Content</span>
+          <span className="hidden sm:inline">Content</span>
         </button>
 
         <button
           onClick={() => setActiveTab('media')}
-          className={`py-1.5 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+          className={`py-1.5 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-0.5 cursor-pointer ${
             activeTab === 'media'
               ? 'bg-white text-blue-700 shadow-2xs border border-slate-200/80'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <ImageIcon className="w-3.5 h-3.5" />
-          <span>Media</span>
+          <span className="hidden sm:inline">Media</span>
         </button>
 
         <button
           onClick={() => setActiveTab('presenter')}
-          className={`py-1.5 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+          className={`py-1.5 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-0.5 cursor-pointer ${
             activeTab === 'presenter'
               ? 'bg-white text-blue-700 shadow-2xs border border-slate-200/80'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <MessageSquare className="w-3.5 h-3.5" />
-          <span>Notes</span>
+          <span className="hidden sm:inline">Notes</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('copilot')}
+          className={`py-1.5 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-0.5 cursor-pointer ${
+            activeTab === 'copilot'
+              ? 'bg-blue-600 text-white shadow-xs font-black'
+              : 'text-blue-600 hover:bg-blue-50'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+          <span className="hidden sm:inline">AI Magic</span>
         </button>
       </div>
 
@@ -1168,6 +1266,119 @@ export const SlideInspector: React.FC<SlideInspectorProps> = ({
                 />
                 <span className="text-xs font-bold text-slate-500 shrink-0">sec</span>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: AI COPILOT & TRANSLATE */}
+        {activeTab === 'copilot' && (
+          <div className="space-y-5">
+            {/* AI Slide Rewrite Box */}
+            <div className="p-3.5 bg-linear-to-br from-blue-50 to-indigo-50/80 border border-blue-200 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="font-black text-blue-900 uppercase text-[10px] tracking-widest flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-amber-500 fill-amber-500" />
+                  AI Slide Magic Rewrite
+                </label>
+                <span className="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full">
+                  Gemini AI
+                </span>
+              </div>
+
+              <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
+                Instruction for AI to rewrite or enhance this slide (e.g. "Add 3 stat metrics", "Rewrite bullets for investor pitch"):
+              </p>
+
+              <textarea
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                rows={3}
+                placeholder="e.g. Make this slide punchier, highlight $42M TAM, and add key takeaways for Series A investors..."
+                className="w-full bg-white border border-blue-200 rounded-xl p-2.5 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20"
+              />
+
+              <button
+                type="button"
+                onClick={handleAiRewriteSlide}
+                disabled={isAiGenerating || !aiPrompt.trim()}
+                className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+              >
+                {isAiGenerating ? (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 animate-spin text-amber-300" />
+                    <span>AI Rewriting Slide...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Rewrite Active Slide</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* AI Auto Speaker Notes */}
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
+              <label className="font-extrabold text-slate-700 uppercase text-[10px] tracking-widest flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+                1-Tap Speaker Notes Generator
+              </label>
+
+              <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                Generate structured, talk-track speaker notes with timing cues directly from this slide's title and takeaways.
+              </p>
+
+              <button
+                type="button"
+                onClick={handleAiSpeakerNotes}
+                disabled={isAiGenerating}
+                className="w-full py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Auto-Draft Speaker Notes</span>
+              </button>
+            </div>
+
+            {/* AI Slide Translator */}
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+              <label className="font-extrabold text-slate-700 uppercase text-[10px] tracking-widest flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                Multi-Language Slide Translator
+              </label>
+
+              <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                Translate slide content into target language or accessibility gloss (ISL Sign Language):
+              </p>
+
+              <select
+                value={targetLang}
+                onChange={(e) => setTargetLang(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-600"
+              >
+                <option value="Spanish">Spanish (Español)</option>
+                <option value="French">French (Français)</option>
+                <option value="German">German (Deutsch)</option>
+                <option value="Japanese">Japanese (日本語)</option>
+                <option value="Chinese">Chinese (中文)</option>
+                <option value="Hindi">Hindi (हिन्दी)</option>
+                <option value="ISL Gloss">Indian Sign Language (ISL Gloss)</option>
+              </select>
+
+              <button
+                type="button"
+                onClick={handleTranslateSlide}
+                disabled={isTranslating}
+                className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {isTranslating ? (
+                  <span>Translating...</span>
+                ) : (
+                  <>
+                    <Globe className="w-3.5 h-3.5" />
+                    <span>Translate Slide Content</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         )}

@@ -11,6 +11,7 @@ import { LiveStreamStudio } from './components/LiveStreamStudio';
 import { ExportModal } from './components/ExportModal';
 import { FileExplorerModal } from './components/FileExplorerModal';
 import { AuthScreen, UserProfile } from './components/AuthScreen';
+import { PitchAnalyticsModal } from './components/PitchAnalyticsModal';
 
 export default function App() {
   // Authentication State
@@ -44,6 +45,7 @@ export default function App() {
   const [isLiveStreamOpen, setIsLiveStreamOpen] = React.useState<boolean>(false);
   const [isExportModalOpen, setIsExportModalOpen] = React.useState<boolean>(false);
   const [isFileExplorerOpen, setIsFileExplorerOpen] = React.useState<boolean>(false);
+  const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = React.useState<boolean>(false);
 
   // Auto-saving Status Indicator state
   const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('saved');
@@ -298,6 +300,7 @@ export default function App() {
         onUndo={handleUndoDeck}
         onRedo={handleRedoDeck}
         onOpenFileExplorer={() => setIsFileExplorerOpen(true)}
+        onOpenAnalyticsModal={() => setIsAnalyticsModalOpen(true)}
         currentUser={currentUser}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onSignOut={handleSignOut}
@@ -379,6 +382,15 @@ export default function App() {
         onClose={() => setIsFileExplorerOpen(false)}
         currentDeck={currentDeck}
         onSelectDeck={handleSelectDeck}
+      />
+
+      {/* Pitch Deck Health Score Analytics Modal */}
+      <PitchAnalyticsModal
+        isOpen={isAnalyticsModalOpen}
+        onClose={() => setIsAnalyticsModalOpen(false)}
+        deck={currentDeck}
+        onOpenAiModal={() => setIsAiModalOpen(true)}
+        onExportPptx={() => setIsExportModalOpen(true)}
       />
 
       {/* Auth Modal overlay when triggered from Navbar */}

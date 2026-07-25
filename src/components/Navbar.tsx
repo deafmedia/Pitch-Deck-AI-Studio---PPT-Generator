@@ -20,6 +20,7 @@ interface NavbarProps {
   onUndo?: () => void;
   onRedo?: () => void;
   onOpenFileExplorer?: () => void;
+  onOpenAnalyticsModal?: () => void;
   currentUser?: UserProfile | null;
   onOpenAuthModal?: () => void;
   onSignOut?: () => void;
@@ -40,6 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onUndo,
   onRedo,
   onOpenFileExplorer,
+  onOpenAnalyticsModal,
   currentUser,
   onOpenAuthModal,
   onSignOut,
@@ -193,6 +195,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
               <span className="hidden md:inline">Saved</span>
             </span>
+          )}
+
+          {/* Pitch Health Score Button */}
+          {onOpenAnalyticsModal && (
+            <button
+              onClick={onOpenAnalyticsModal}
+              className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200/90 rounded-full text-[10px] font-extrabold tracking-wide uppercase shrink-0 transition cursor-pointer active:scale-95 shadow-2xs"
+              title="View Deck Health Score & AI Pitch Analysis"
+            >
+              <Sparkles className="w-2.5 h-2.5 text-blue-600" />
+              <span className="hidden sm:inline">Pitch Score</span>
+            </button>
           )}
         </div>
       </div>

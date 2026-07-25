@@ -26,7 +26,20 @@ import {
   Send,
   CheckCircle2,
   Sparkle,
-  Pencil
+  Pencil,
+  Disc,
+  Key,
+  Globe,
+  Lock,
+  Eye,
+  EyeOff,
+  UserCheck,
+  Play,
+  Square,
+  Tv,
+  RefreshCw,
+  Copy,
+  Check
 } from 'lucide-react';
 import { PitchDeck, ThemePreset } from '../types';
 import { THEME_PRESETS } from '../data/templates';
@@ -121,10 +134,42 @@ export const LiveStreamStudio: React.FC<LiveStreamStudioProps> = ({
   const [showCaptions, setShowCaptions] = React.useState(true);
   const [showNotes, setShowNotes] = React.useState(false);
   const [showQna, setShowQna] = React.useState(false);
+  const [showSettingsModal, setShowSettingsModal] = React.useState(false);
+
+  // Screen Recording State
+  const [isRecording, setIsRecording] = React.useState(false);
+  const [recordingSeconds, setRecordingSeconds] = React.useState(0);
+  const [recordingQuality, setRecordingQuality] = React.useState<'1080p60' | '4k30' | '720p60'>('1080p60');
+  const [recordAudioSource, setRecordAudioSource] = React.useState<'system_mic' | 'system_only' | 'mic_only'>('system_mic');
+  const [recordInterpreterPip, setRecordInterpreterPip] = React.useState(true);
+
+  // YouTube Live Stream Settings State
+  const [youtubeConnected, setYoutubeConnected] = React.useState(true);
+  const [youtubeChannelName, setYoutubeChannelName] = React.useState('Deaf Tech Stream Official');
+  const [streamKey, setStreamKey] = React.useState('yt-live-rtmp-8492-9901-deaf-studio');
+  const [showStreamKey, setShowStreamKey] = React.useState(false);
+  const [streamPrivacy, setStreamPrivacy] = React.useState<'public' | 'unlisted' | 'private'>('public');
+  const [streamBitrate, setStreamBitrate] = React.useState('6000 kbps (1080p60)');
+  const [isKeyCopied, setIsKeyCopied] = React.useState(false);
+  const [activeSettingsTab, setActiveSettingsTab] = React.useState<'youtube' | 'recording' | 'accessibility'>('youtube');
+
   const [viewerCount, setViewerCount] = React.useState(1284);
   const [captionText, setCaptionText] = React.useState(
     "Live Speech: 'Welcome everyone to the DEF Demo UX presentation. Today we are demonstrating deaf-first digital identity and real-time video relay sign language integration...'"
   );
+
+  // Screen Recording Duration Counter
+  React.useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isRecording) {
+      timer = setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setRecordingSeconds(0);
+    }
+    return () => clearInterval(timer);
+  }, [isRecording]);
 
   // Personnel Q&A State
   const [questions, setQuestions] = React.useState<QuestionItem[]>([
@@ -367,7 +412,40 @@ export const LiveStreamStudio: React.FC<LiveStreamStudioProps> = ({
             </button>
           </div>
 
-          {/* Toggle Slide Annotation Overlay Tool */}
+          {/* Screen Recording Toggle Button */}
+          <button
+            onClick={() => setIsRecording(!isRecording)}
+            className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer relative ${
+              isRecording
+                ? 'bg-red-600 border-red-500 text-white shadow-lg ring-2 ring-red-500/50'
+                : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:border-slate-600'
+            }`}
+            title={isRecording ? 'Stop Screen Recording' : 'Start Screen Recording'}
+          >
+            <Disc className={`w-4 h-4 ${isRecording ? 'text-white animate-spin' : 'text-red-400'}`} />
+            <span className="hidden sm:inline font-mono">
+              {isRecording
+                ? `REC ${Math.floor(recordingSeconds / 60)
+                    .toString()
+                    .padStart(2, '0')}:${(recordingSeconds % 60).toString().padStart(2, '0')}`
+                : 'Screen Record'}
+            </span>
+            {isRecording && <span className="w-2 h-2 rounded-full bg-red-400 animate-ping" />}
+          </button>
+
+          {/* YouTube Live Stream & Studio Settings Modal Toggle */}
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            className={`p-2 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              showSettingsModal
+                ? 'bg-red-950/80 border-red-500/60 text-red-300'
+                : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
+            }`}
+            title="YouTube Live Stream & Recording Settings"
+          >
+            <Settings className="w-4 h-4 text-red-400" />
+            <span className="hidden md:inline">Settings</span>
+          </button>
           <button
             onClick={() => setIsAnnotating(!isAnnotating)}
             className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer relative ${
@@ -1045,6 +1123,315 @@ export const LiveStreamStudio: React.FC<LiveStreamStudioProps> = ({
           <p className="leading-relaxed font-medium">
             {currentSlide.speakerNotes || 'No specific speaker notes recorded for this slide.'}
           </p>
+        </div>
+      )}
+
+      {/* YouTube Live Stream & Screen Recording Settings Modal */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-red-600/20 border border-red-500/30 flex items-center justify-center text-red-500 font-extrabold">
+                  <Tv className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="font-extrabold text-base text-white flex items-center gap-2">
+                    Broadcast & Recording Settings
+                    <span className="text-[10px] font-extrabold bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full">
+                      YouTube Studio
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-400">Configure RTMP stream keys, personal account login, and screen recording</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Navigation Tabs */}
+            <div className="flex border-b border-slate-800 bg-slate-950/50 px-4 pt-2 shrink-0">
+              <button
+                onClick={() => setActiveSettingsTab('youtube')}
+                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+                  activeSettingsTab === 'youtube'
+                    ? 'border-red-500 text-red-400 bg-red-950/20'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Radio className="w-4 h-4 text-red-500" />
+                <span>YouTube Live Stream</span>
+              </button>
+              <button
+                onClick={() => setActiveSettingsTab('recording')}
+                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+                  activeSettingsTab === 'recording'
+                    ? 'border-blue-500 text-blue-400 bg-blue-950/20'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Disc className="w-4 h-4 text-blue-500" />
+                <span>Screen Recording</span>
+              </button>
+              <button
+                onClick={() => setActiveSettingsTab('accessibility')}
+                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+                  activeSettingsTab === 'accessibility'
+                    ? 'border-purple-500 text-purple-400 bg-purple-950/20'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Subtitles className="w-4 h-4 text-purple-500" />
+                <span>Sign Relay & CC</span>
+              </button>
+            </div>
+
+            {/* Tab Content Area */}
+            <div className="p-5 overflow-y-auto space-y-5 text-xs flex-1">
+              {activeSettingsTab === 'youtube' && (
+                <div className="space-y-4">
+                  {/* YouTube Account Login Card */}
+                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-red-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-lg">
+                        YT
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-sm text-white">{youtubeChannelName}</span>
+                          <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <UserCheck className="w-3 h-3" />
+                            Connected
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Personal YouTube Channel • Stream permissions verified
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setYoutubeConnected(!youtubeConnected)}
+                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold border border-slate-700 transition cursor-pointer shrink-0"
+                    >
+                      {youtubeConnected ? 'Switch Account' : 'Connect YouTube'}
+                    </button>
+                  </div>
+
+                  {/* RTMP Stream Key Settings */}
+                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="font-extrabold text-slate-300 uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+                        <Key className="w-3.5 h-3.5 text-amber-400" />
+                        <span>YouTube Stream Key (RTMP)</span>
+                      </label>
+                      <span className="text-[10px] font-mono text-slate-500">rtmp://a.rtmp.youtube.com/live2</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type={showStreamKey ? 'text' : 'password'}
+                          value={streamKey}
+                          onChange={(e) => setStreamKey(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-amber-300 focus:outline-none focus:border-amber-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowStreamKey(!showStreamKey)}
+                          className="absolute right-3 top-2.5 text-slate-400 hover:text-white"
+                        >
+                          {showStreamKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(streamKey);
+                          setIsKeyCopied(true);
+                          setTimeout(() => setIsKeyCopied(false), 2000);
+                        }}
+                        className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 transition cursor-pointer flex items-center gap-1.5 shrink-0"
+                      >
+                        {isKeyCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                        <span>{isKeyCopied ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Privacy & Bitrate Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Stream Privacy */}
+                    <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                      <label className="font-extrabold text-slate-400 uppercase text-[10px] tracking-wider block">
+                        Privacy Mode
+                      </label>
+                      <div className="flex gap-1 bg-slate-900 p-1 rounded-lg">
+                        {[
+                          { id: 'public', label: 'Public', icon: Globe },
+                          { id: 'unlisted', label: 'Unlisted', icon: Key },
+                          { id: 'private', label: 'Private', icon: Lock },
+                        ].map((p) => {
+                          const IconComp = p.icon;
+                          const isSel = streamPrivacy === p.id;
+                          return (
+                            <button
+                              key={p.id}
+                              onClick={() => setStreamPrivacy(p.id as any)}
+                              className={`flex-1 py-1.5 rounded-md font-bold transition flex items-center justify-center gap-1 ${
+                                isSel ? 'bg-red-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              <IconComp className="w-3.5 h-3.5" />
+                              <span>{p.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Stream Resolution & Bitrate */}
+                    <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                      <label className="font-extrabold text-slate-400 uppercase text-[10px] tracking-wider block">
+                        Ingest Bitrate Target
+                      </label>
+                      <select
+                        value={streamBitrate}
+                        onChange={(e) => setStreamBitrate(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-red-500 font-bold"
+                      >
+                        <option value="6000 kbps (1080p60)">6,000 kbps — 1080p @ 60 FPS (Ultra Quality)</option>
+                        <option value="4500 kbps (1080p30)">4,500 kbps — 1080p @ 30 FPS (Standard)</option>
+                        <option value="3000 kbps (720p60)">3,000 kbps — 720p @ 60 FPS (Bandwidth Saver)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeSettingsTab === 'recording' && (
+                <div className="space-y-4">
+                  {/* Screen Recording Quick Control Box */}
+                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
+                        Local Screen & Audio Recording
+                        {isRecording && (
+                          <span className="bg-red-500 text-white font-mono text-[10px] font-extrabold px-2 py-0.5 rounded-full animate-pulse">
+                            RECORDING ACTIVE
+                          </span>
+                        )}
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Capture presentation slides, presenter webcams, and sign language interpreter streams
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setIsRecording(!isRecording)}
+                      className={`px-4 py-2 rounded-xl font-extrabold text-xs transition cursor-pointer flex items-center gap-2 ${
+                        isRecording
+                          ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg'
+                          : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg'
+                      }`}
+                    >
+                      {isRecording ? <Square className="w-4 h-4 fill-white" /> : <Play className="w-4 h-4 fill-white" />}
+                      <span>{isRecording ? 'Stop Recording' : 'Start Recording'}</span>
+                    </button>
+                  </div>
+
+                  {/* Recording Options Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                      <label className="font-extrabold text-slate-400 uppercase text-[10px] tracking-wider block">
+                        Recording Resolution
+                      </label>
+                      <select
+                        value={recordingQuality}
+                        onChange={(e) => setRecordingQuality(e.target.value as any)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 font-bold"
+                      >
+                        <option value="1080p60">1080p HD @ 60 FPS (Recommended)</option>
+                        <option value="4k30">4K Ultra HD @ 30 FPS</option>
+                        <option value="720p60">720p HD @ 60 FPS</option>
+                      </select>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                      <label className="font-extrabold text-slate-400 uppercase text-[10px] tracking-wider block">
+                        Audio Recording Source
+                      </label>
+                      <select
+                        value={recordAudioSource}
+                        onChange={(e) => setRecordAudioSource(e.target.value as any)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 font-bold"
+                      >
+                        <option value="system_mic">System Audio + Microphone Mix</option>
+                        <option value="system_only">System Audio Only (No Mic)</option>
+                        <option value="mic_only">Microphone Only</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* PIP Recording Checkbox */}
+                  <label className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between cursor-pointer hover:bg-slate-900/50 transition">
+                    <div>
+                      <span className="font-extrabold text-white text-xs block">Record Sign Language Interpreter PIP</span>
+                      <span className="text-[11px] text-slate-400 block mt-0.5">
+                        Embed the live sign relay stream into a separate side panel in the exported MP4
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={recordInterpreterPip}
+                      onChange={(e) => setRecordInterpreterPip(e.target.checked)}
+                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-700 bg-slate-900 cursor-pointer"
+                    />
+                  </label>
+                </div>
+              )}
+
+              {activeSettingsTab === 'accessibility' && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-2">
+                    <h3 className="font-extrabold text-sm text-purple-200 flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-purple-400" />
+                      VRS Sign Relay Sub-Stream Forwarding
+                    </h3>
+                    <p className="text-xs text-purple-300/80">
+                      Forward dedicated high-definition ISL/ASL Video Relay Service stream to secondary accessibility channels.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                    <label className="font-extrabold text-slate-400 uppercase text-[10px] tracking-wider block">
+                      Automated Speech-to-Text Language Engine
+                    </label>
+                    <select className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white font-bold">
+                      <option value="en-US">English (US) — High Precision Neural Model</option>
+                      <option value="hi-IN">Hindi / Indian English — Dual Subtitles</option>
+                      <option value="es-ES">Spanish — Multilingual Captioning</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between shrink-0">
+              <span className="text-[11px] text-slate-500 font-mono">
+                Changes saved automatically to studio session
+              </span>
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs transition shadow-lg cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
